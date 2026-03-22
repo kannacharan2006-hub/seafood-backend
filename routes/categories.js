@@ -8,25 +8,24 @@ const verifyToken = require('../middleware/auth');
 
 router.get('/', verifyToken, async (req, res) => {
 
-const companyId = req.user.company_id;
+  const companyId = req.user.company_id;
 
-try {
+  try {
 
-const [rows] = await db.promise().query(
-`SELECT id, name
+    const [rows] = await db.promise().query(
+      `SELECT id, name
 FROM categories
-WHERE company_id = ?
-ORDER BY name`,
-[companyId]
-);
+ORDER BY name`
 
-res.json(rows);
+    );
 
-} catch (error) {
+    res.json(rows);
 
-res.status(500).json({ error: error.message });
+  } catch (error) {
 
-}
+    res.status(500).json({ error: error.message });
+
+  }
 
 });
 

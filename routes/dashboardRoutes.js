@@ -18,16 +18,16 @@ SELECT IFNULL(SUM(rs.available_qty),0) AS total
 FROM raw_stock rs
 JOIN variants v ON rs.variant_id = v.id
 WHERE rs.company_id = ?
-AND v.company_id = ?
-`, [companyId, companyId]);
+`, [companyId]);
+
 
 const [[final]] = await db.promise().query(`
 SELECT IFNULL(SUM(fs.available_qty),0) AS total
 FROM final_stock fs
 JOIN variants v ON fs.variant_id = v.id
 WHERE fs.company_id = ?
-AND v.company_id = ?
-`, [companyId, companyId]);
+`, [companyId]);
+
 
 /* ================= TODAY ================= */
 

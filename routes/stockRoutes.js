@@ -23,11 +23,9 @@ JOIN variants v ON rs.variant_id = v.id
 JOIN items i ON v.item_id = i.id
 JOIN categories c ON i.category_id = c.id
 WHERE rs.available_qty > 0
-AND rs.company_id = ?
-AND v.company_id = ?
-AND i.company_id = ?
-AND c.company_id = ?`,
-[companyId, companyId, companyId, companyId]
+AND rs.company_id = ?`,
+[companyId]
+
 );
 
 res.json(rows);
@@ -62,11 +60,9 @@ JOIN variants v ON fs.variant_id = v.id
 JOIN items i ON v.item_id = i.id
 JOIN categories c ON i.category_id = c.id
 WHERE fs.available_qty > 0
-AND fs.company_id = ?
-AND v.company_id = ?
-AND i.company_id = ?
-AND c.company_id = ?`,
-[companyId, companyId, companyId, companyId]
+AND fs.company_id = ?`,
+[companyId]
+
 );
 
 res.json(rows);

@@ -21,10 +21,10 @@ router.get('/daily-sales', verifyToken, async (req, res) => {
         SUM(ei.total) as daily_revenue,
         SUM(ei.quantity) as daily_kg
       FROM exports e JOIN export_items ei ON e.id = ei.export_id
-      WHERE e.company_id = ? AND ei.company_id = ?
+      WHERE e.company_id = ?
       AND e.date BETWEEN ? AND ?
       GROUP BY DATE(e.date) ORDER BY sale_date DESC
-    `, [companyId, companyId, from, to]);
+    `, [companyId, from, to]);
 
     const totalRevenue = dailyData.reduce((sum, day) => sum + parseFloat(day.daily_revenue || 0), 0);
     
@@ -58,10 +58,10 @@ router.get('/top-customers', verifyToken, async (req, res) => {
       FROM exports e 
       JOIN export_items ei ON e.id = ei.export_id
       LEFT JOIN customers c ON e.customer_id = c.id
-      WHERE e.company_id = ? AND ei.company_id = ?
+      WHERE e.company_id = ?
       GROUP BY c.id HAVING revenue > 0 
       ORDER BY revenue DESC LIMIT ?
-    `, [companyId, companyId, parseInt(limit)]);
+    `, [companyId, parseInt(limit)]);
 
     res.json({ top_customers: customers });
   } catch (error) {
@@ -85,9 +85,9 @@ router.get('/top-products', verifyToken, async (req, res) => {
       FROM exports e JOIN export_items ei ON e.id = ei.export_id
       JOIN variants v ON ei.variant_id = v.id
       JOIN items i ON v.item_id = i.id
-      WHERE e.company_id = ? AND ei.company_id = ? AND v.company_id = ?
+      WHERE e.company_id = ?
       GROUP BY i.id, v.id ORDER BY kg_sold DESC LIMIT ?
-    `, [companyId, companyId, companyId, parseInt(limit)]);
+    `, [companyId, parseInt(limit)]);
 
     res.json({ best_sellers: products });
   } catch (error) {
@@ -113,11 +113,11 @@ router.get('/revenue-performance', verifyToken, async (req, res) => {
       FROM exports e JOIN export_items ei ON e.id = ei.export_id
       JOIN variants v ON ei.variant_id = v.id
       JOIN items i ON v.item_id = i.id
-      WHERE e.company_id = ? AND ei.company_id = ? AND v.company_id = ?
+      WHERE e.company_id = ?
       ${from && to ? 'AND e.date BETWEEN ? AND ?' : ''}
       GROUP BY i.id, v.id HAVING total_kg_sold > 0
       ORDER BY total_revenue DESC
-    `, [companyId, companyId, companyId, from, to].filter(Boolean));
+    `, [companyId, from, to].filter(Boolean));
 
     res.json({ performance: report });
   } catch (error) {
@@ -138,10 +138,10 @@ router.get('/monthly-trends', verifyToken, async (req, res) => {
         SUM(ei.total) as revenue,
         SUM(ei.quantity) as total_kg
       FROM exports e JOIN export_items ei ON e.id = ei.export_id
-      WHERE e.company_id = ? AND ei.company_id = ?
+      WHERE e.company_id = ?
       AND e.date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
       GROUP BY month ORDER BY month DESC
-    `, [companyId, companyId, months]);
+    `, [companyId, months]);
 
     res.json({ trends });
   } catch (error) {
@@ -162,8 +162,8 @@ router.get('/invoice-status', verifyToken, async (req, res) => {
         SUM(ei.total) as total_outstanding
       FROM exports e
       JOIN export_items ei ON e.id = ei.export_id
-      WHERE e.company_id = ? AND ei.company_id = ?
-    `, [companyId, companyId]);
+      WHERE e.company_id = ?
+    `, [companyId]);
 
     res.json({
       collection_status: {
@@ -194,10 +194,10 @@ router.get('/customer-ltv', verifyToken, async (req, res) => {
         DATEDIFF(MAX(e.date), MIN(e.date)) as customer_age_days
       FROM exports e JOIN export_items ei ON e.id = ei.export_id
       LEFT JOIN customers c ON e.customer_id = c.id
-      WHERE e.company_id = ? AND ei.company_id = ?
+      WHERE e.company_id = ?
       GROUP BY c.id HAVING total_orders > 1
       ORDER BY lifetime_value DESC LIMIT 20
-    `, [companyId, companyId]);
+    `, [companyId]);
 
     res.json({ high_value_customers: ltv });
   } catch (error) {
@@ -206,7 +206,6 @@ router.get('/customer-ltv', verifyToken, async (req, res) => {
 });
 
 /* 8️⃣ PRICE TREND ANALYSIS */
-/* 8️⃣ PRICE TREND ANALYSIS - FIXED FOR ONLY_FULL_GROUP_BY */
 router.get('/price-trends', verifyToken, async (req, res) => {
   const companyId = req.user.company_id;
   const { product_name } = req.query;
@@ -224,12 +223,12 @@ router.get('/price-trends', verifyToken, async (req, res) => {
       JOIN export_items ei ON e.id = ei.export_id
       JOIN variants v ON ei.variant_id = v.id
       JOIN items i ON v.item_id = i.id
-      WHERE e.company_id = ? AND ei.company_id = ? AND v.company_id = ?
+      WHERE e.company_id = ?
       ${product_name ? 'AND i.name LIKE ?' : ''}
       AND e.date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
       GROUP BY i.id, DATE_FORMAT(e.date, '%Y-%m')
       ORDER BY i.name, month
-    `, [companyId, companyId, companyId, product_name ? `%${product_name}%` : null].filter(Boolean));
+    `, [companyId, product_name ? `%${product_name}%` : null].filter(Boolean));
 
     res.json({ price_trends: trends });
   } catch (error) {

@@ -53,7 +53,7 @@ throw new Error("Invalid raw item data");
 }
 
 /* Validate variant */
-
+/** 
 const [variantCheck] = await connection.query(
 `SELECT id
 FROM variants
@@ -64,7 +64,7 @@ WHERE id = ? AND company_id = ?`,
 if (variantCheck.length === 0) {
 throw new Error("Invalid variant selected");
 }
-
+**/
 
 /* Lock raw stock */
 
@@ -121,7 +121,7 @@ throw new Error("Invalid final item data");
 
 
 /* Validate variant */
-
+/** 
 const [variantCheck] = await connection.query(
 `SELECT id
 FROM variants
@@ -132,7 +132,7 @@ WHERE id = ? AND company_id = ?`,
 if (variantCheck.length === 0) {
 throw new Error("Invalid variant selected");
 }
-
+**/
 
 /* Update final stock */
 

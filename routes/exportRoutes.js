@@ -62,14 +62,14 @@ throw new Error("Invalid item data");
 const total = Number((quantity * price).toFixed(2));
 
 /* Validate variant */
-
+/** 
 const [variantCheck] = await connection.query(
 `SELECT id FROM variants WHERE id=? AND company_id=?`,
 [variant_id, companyId]
 );
 
 if (!variantCheck.length) throw new Error("Invalid variant");
-
+**/
 /* Deduct stock */
 
 const [updateResult] = await connection.query(

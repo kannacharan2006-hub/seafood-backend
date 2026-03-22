@@ -73,7 +73,7 @@ grandTotal += total;
 
 
 /* Validate variant belongs to company */
-
+/** 
 const [variantCheck] = await connection.query(
 `SELECT id FROM variants
  WHERE id = ? AND company_id = ?`,
@@ -83,6 +83,7 @@ const [variantCheck] = await connection.query(
 if (variantCheck.length === 0) {
 throw new Error("Invalid variant selected");
 }
+*/
 /* Insert purchase items */
 
 await connection.query(
