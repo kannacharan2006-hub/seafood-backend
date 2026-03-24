@@ -1,11 +1,13 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const { limiter } = require('./config/rateLimit');
 const logger = require('./config/logger');
 const swaggerSpec = require('./config/swagger');
+const { wsManager } = require('./config/websocket');
 
 const app = express();
 
@@ -70,7 +72,11 @@ app.use((err, req, res, next) => {
 /* ================= SERVER ================= */
 
 const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
 
-app.listen(PORT, '0.0.0.0', () => {
+wsManager.initialize(server);
+
+server.listen(PORT, '0.0.0.0', () => {
     logger.info(`Server running on http://0.0.0.0:${PORT}`);
+    logger.info(`WebSocket available at ws://0.0.0.0:${PORT}/ws`);
 });

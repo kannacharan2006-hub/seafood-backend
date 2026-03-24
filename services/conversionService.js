@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { wsManager } = require('../config/websocket');
 
 class ConversionService {
   static async createConversion(userId, companyId, raw_items, final_items, date, notes) {
@@ -64,6 +65,15 @@ class ConversionService {
       }
 
       await connection.commit();
+      
+      wsManager.notifyConversion(companyId, {
+        conversionId,
+        rawItemCount: raw_items.length,
+        finalItemCount: final_items.length
+      });
+      
+      wsManager.notifyStockUpdate(companyId, 'both', { action: 'conversion', conversionId });
+      
       return { message: "Conversion completed successfully" };
     } catch (error) {
       await connection.rollback();
@@ -125,6 +135,9 @@ class ConversionService {
       await connection.query(`DELETE FROM conversion WHERE id = ? AND company_id = ?`, [conversionId, companyId]);
 
       await connection.commit();
+      
+      wsManager.notifyStockUpdate(companyId, 'both', { action: 'conversion_deleted', conversionId });
+      
       return { message: "Conversion deleted and stock reversed successfully" };
     } catch (error) {
       await connection.rollback();

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { wsManager } = require('../config/websocket');
 
 class PurchaseService {
   static async createPurchase(userId, companyId, vendor_id, supplier_type, date, items) {
@@ -57,6 +58,16 @@ class PurchaseService {
       );
 
       await connection.commit();
+      
+      wsManager.notifyPurchase(companyId, {
+        purchaseId,
+        vendor_id,
+        total: grandTotal,
+        itemCount: items.length
+      });
+      
+      wsManager.notifyStockUpdate(companyId, 'raw_stock', { action: 'purchase', purchaseId });
+      
       return { message: "Purchase saved successfully" };
     } catch (error) {
       await connection.rollback();
@@ -115,6 +126,9 @@ class PurchaseService {
       );
 
       await connection.commit();
+      
+      wsManager.notifyStockUpdate(companyId, 'raw_stock', { action: 'purchase_deleted', purchaseId });
+      
       return { message: "Purchase deleted safely" };
     } catch (error) {
       await connection.rollback();

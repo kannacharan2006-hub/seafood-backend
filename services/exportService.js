@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { wsManager } = require('../config/websocket');
 
 class ExportService {
   static async createExport(userId, companyId, customer_id, date, items) {
@@ -55,6 +56,16 @@ class ExportService {
       }
 
       await connection.commit();
+      
+      wsManager.notifyExport(companyId, {
+        exportId,
+        invoice_no,
+        customer_id,
+        itemCount: items.length
+      });
+      
+      wsManager.notifyStockUpdate(companyId, 'final_stock', { action: 'export', exportId });
+      
       return { message: "Export successful", invoice_no };
     } catch (error) {
       await connection.rollback();
@@ -105,6 +116,9 @@ class ExportService {
       );
 
       await connection.commit();
+      
+      wsManager.notifyStockUpdate(companyId, 'final_stock', { action: 'export_deleted', exportId });
+      
       return { message: "Export deleted & stock restored" };
     } catch (error) {
       await connection.rollback();
