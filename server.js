@@ -9,6 +9,7 @@ const logger = require('./config/logger');
 const swaggerSpec = require('./config/swagger');
 const { wsManager } = require('./config/websocket');
 const SchedulerService = require('./config/scheduler');
+const { requestIdMiddleware, requestLogger } = require('./middleware/requestLogger');
 
 const app = express();
 
@@ -16,8 +17,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(requestIdMiddleware);
+app.use(requestLogger);
 
-/* ================= LOGGING ================= */
 app.use(morgan('combined', {
   stream: {
     write: (message) => logger.info(message.trim())
@@ -63,10 +65,17 @@ app.get('/api/test', (req, res) => {
 /* ================= GLOBAL ERROR HANDLER ================= */
 
 app.use((err, req, res, next) => {
-    logger.error(err.message, { stack: err.stack });
+    logger.error('Request failed', {
+        requestId: req.requestId,
+        error: err.message,
+        stack: err.stack,
+        method: req.method,
+        url: req.originalUrl
+    });
     res.status(500).json({
         success: false,
-        message: 'Internal Server Error'
+        message: 'Internal Server Error',
+        requestId: req.requestId
     });
 });
 
