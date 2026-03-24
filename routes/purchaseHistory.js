@@ -5,14 +5,24 @@ const verifyToken = require('../middleware/auth');
 
 
 /* =========================================
-LIST PURCHASES
+LIST PURCHASES (Paginated)
 ========================================= */
 
 router.get('/', verifyToken, async (req, res) => {
 
 const companyId = req.user.company_id;
+const page = parseInt(req.query.page) || 1;
+const limit = parseInt(req.query.limit) || 20;
+const offset = (page - 1) * limit;
 
 try {
+
+const [countResult] = await db.promise().query(
+  `SELECT COUNT(*) as total FROM purchases WHERE company_id = ?`,
+  [companyId]
+);
+const totalItems = countResult[0].total;
+const totalPages = Math.ceil(totalItems / limit);
 
 const [results] = await db.promise().query(`
 SELECT
@@ -25,10 +35,21 @@ FROM purchases p
 JOIN vendors ven ON p.vendor_id = ven.id
 JOIN users u ON p.created_by = u.id
 WHERE p.company_id = ?
-ORDER BY p.date DESC
-`, [companyId]);
+ORDER BY p.date DESC, p.id DESC
+LIMIT ? OFFSET ?
+`, [companyId, limit, offset]);
 
-res.json(results);
+res.json({
+  data: results,
+  pagination: {
+    currentPage: page,
+    totalPages,
+    totalItems,
+    itemsPerPage: limit,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1
+  }
+});
 
 } catch (error) {
 

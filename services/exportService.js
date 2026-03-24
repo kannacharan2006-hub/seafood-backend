@@ -128,15 +128,24 @@ class ExportService {
     }
   }
 
-  static async getExports(companyId) {
+  static async getExports(companyId, page = 1, limit = 20) {
+    const offset = (page - 1) * limit;
+
+    const [totalResult] = await db.promise().query(
+      `SELECT COUNT(*) as total FROM exports WHERE company_id = ?`,
+      [companyId]
+    );
+    const totalItems = totalResult[0].total;
+
     const [exports] = await db.promise().query(`
       SELECT e.id, e.invoice_no, e.date, c.name AS customer_name, u.name AS created_by
       FROM exports e
       LEFT JOIN customers c ON e.customer_id = c.id
       LEFT JOIN users u ON e.created_by = u.id
       WHERE e.company_id = ?
-      ORDER BY e.date DESC
-    `, [companyId]);
+      ORDER BY e.date DESC, e.id DESC
+      LIMIT ? OFFSET ?
+    `, [companyId, limit, offset]);
 
     for (let exp of exports) {
       const [items] = await db.promise().query(`
@@ -150,7 +159,19 @@ class ExportService {
       exp.items = items;
     }
 
-    return exports;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      data: exports,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    };
   }
 
   static async getInvoiceData(exportId, companyId) {

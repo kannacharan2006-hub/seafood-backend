@@ -87,18 +87,31 @@ router.delete('/:id', verifyToken, async (req, res) => {
  * @swagger
  * /api/exports:
  *   get:
- *     summary: Get all exports
+ *     summary: Get all exports (paginated)
  *     tags: [Exports]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
  *     responses:
  *       200:
- *         description: List of exports
+ *         description: List of exports with pagination
  */
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const exports = await ExportService.getExports(req.user.company_id);
-    res.json(exports);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await ExportService.getExports(req.user.company_id, page, limit);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

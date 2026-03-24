@@ -147,10 +147,19 @@ class ConversionService {
     }
   }
 
-  static async getConversions(companyId) {
-    const [conversions] = await db.promise().query(
-      `SELECT c.id, c.date, c.notes, u.name AS created_by FROM conversion c JOIN users u ON c.created_by = u.id WHERE c.company_id = ? ORDER BY c.date DESC, c.id DESC`,
+  static async getConversions(companyId, page = 1, limit = 20) {
+    const offset = (page - 1) * limit;
+
+    const [countResult] = await db.promise().query(
+      `SELECT COUNT(*) as total FROM conversion WHERE company_id = ?`,
       [companyId]
+    );
+    const totalItems = countResult[0].total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const [conversions] = await db.promise().query(
+      `SELECT c.id, c.date, c.notes, u.name AS created_by FROM conversion c JOIN users u ON c.created_by = u.id WHERE c.company_id = ? ORDER BY c.date DESC, c.id DESC LIMIT ? OFFSET ?`,
+      [companyId, limit, offset]
     );
 
     for (let conv of conversions) {
@@ -166,7 +175,17 @@ class ConversionService {
       conv.final_items = outputs;
     }
 
-    return conversions;
+    return {
+      data: conversions,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    };
   }
 }
 

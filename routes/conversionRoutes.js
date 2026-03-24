@@ -27,8 +27,10 @@ router.delete('/convert/:id', verifyToken, async (req, res) => {
 
 router.get('/convert', verifyToken, async (req, res) => {
   try {
-    const conversions = await ConversionService.getConversions(req.user.company_id);
-    res.json(conversions);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await ConversionService.getConversions(req.user.company_id, page, limit);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
