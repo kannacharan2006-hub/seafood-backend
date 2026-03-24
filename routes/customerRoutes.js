@@ -1,82 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
 const { customerValidation } = require('../config/validation');
+const CustomerService = require('../services/customerService');
 
-
-/* ================= ADD CUSTOMER ================= */
 router.post('/', verifyToken, customerValidation.create, async (req, res) => {
-
-    try {
-
-        if (req.user.role !== 'OWNER') {
-            return res.status(403).json({
-                message: "Only Owner can add customers"
-            });
-        }
-
-        const { name, phone, address } = req.body;
-        const companyId = req.user.company_id;
-
-        // Validation
-        if (!name || name.trim() === "") {
-            return res.status(400).json({
-                message: "Customer name is required"
-            });
-        }
-
-        // Check duplicate inside same company
-        const [existing] = await db.promise().query(
-            `SELECT id FROM customers 
-                                                                                                                                                                                             WHERE name = ? AND company_id = ?`,
-            [name, companyId]
-        );
-
-        if (existing.length > 0) {
-            return res.status(400).json({
-                message: "Customer already exists"
-            });
-        }
-
-        // Insert with company_id
-        await db.promise().query(
-            `INSERT INTO customers (name, phone, address, company_id) 
-                                                                                                                                                                                                                                                                                                                  VALUES (?, ?, ?, ?)`,
-            [name.trim(), phone || null, address || null, companyId]
-        );
-
-        res.json({ message: "Customer added successfully" });
-
-    } catch (error) {
-        console.error("ADD CUSTOMER ERROR:", error);
-        res.status(500).json({ message: error.message });
+  try {
+    if (req.user.role !== 'OWNER') {
+      return res.status(403).json({ message: "Only Owner can add customers" });
     }
+    const { name, phone, address } = req.body;
+    const result = await CustomerService.createCustomer(req.user.company_id, name, phone, address);
+    res.json(result);
+  } catch (error) {
+    res.status(error.message === "Customer already exists" ? 400 : 500).json({ message: error.message });
+  }
 });
 
-
-/* ================= GET CUSTOMERS ================= */
 router.get('/', verifyToken, async (req, res) => {
-
-    try {
-
-        const companyId = req.user.company_id;
-
-        const [customers] = await db.promise().query(
-            `SELECT id, name, phone, address 
-                                                                                                                                                                                                                                                                                                                                                                                                                   FROM customers
-                                                                                                                                                                                                                                                                                                                                                                                                                                WHERE company_id = ?
-                                                                                                                                                                                                                                                                                                                                                                                                                                             ORDER BY name ASC`,
-            [companyId]
-        );
-
-        res.json(customers);
-
-    } catch (error) {
-        console.error("GET CUSTOMER ERROR:", error);
-        res.status(500).json({ message: error.message });
-    }
+  try {
+    const customers = await CustomerService.getCustomers(req.user.company_id);
+    res.json(customers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
-
 
 module.exports = router;
