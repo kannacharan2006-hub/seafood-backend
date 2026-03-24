@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { limiter } = require('./config/rateLimit');
 
 const app = express();
 
@@ -8,6 +9,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+/* ================= RATE LIMITING ================= */
+app.use(limiter);
 
 /* ================= ROUTES ================= */
 app.use(require('./middleware/errorHandler'));

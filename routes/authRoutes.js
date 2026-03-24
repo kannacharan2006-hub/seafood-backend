@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const verifyToken = require('../middleware/auth');
 const { authValidation } = require('../config/validation');
+const { loginLimiter } = require('../config/rateLimit');
 
 const nodemailer = require('nodemailer');
 
@@ -22,7 +23,7 @@ const transporter = nodemailer.createTransport({
 // ==================================================================================================
 // LOGIN
 // ==============================================================
-router.post('/login', authValidation.login, async (req, res) => {
+router.post('/login', loginLimiter, authValidation.login, async (req, res) => {
 
 const { email, password } = req.body;
 
