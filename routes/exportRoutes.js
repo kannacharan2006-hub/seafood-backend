@@ -250,12 +250,12 @@ res.status(500).json({ error: error.message });
 /* =========================================
    INVOICE PDF
 ========================================= */
-
 router.get('/invoice/:id', verifyToken, async (req, res) => {
   const exportId = req.params.id;
   const companyId = req.user.company_id;
 
   try {
+    // Get export with items
     const [items] = await db.promise().query(`
       SELECT e.invoice_no, e.date, c.name AS customer_name, c.address AS customer_address, 
              c.phone AS customer_phone, i.name AS item_name, v.variant_name, 
@@ -268,6 +268,13 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
     if (!items.length)
       return res.status(404).json({ message: "Invoice not found" });
 
+    // Get company details
+    const [companies] = await db.promise().query(
+      `SELECT name, phone, email FROM companies WHERE id = ?`, [companyId]
+    );
+    const company = companies[0] || {};
+
+    // Calculate totals
     const safeItems = items.map(item => ({
       ...item,
       quantity: parseFloat(item.quantity) || 0,
@@ -276,96 +283,126 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
     }));
 
     const subTotal = safeItems.reduce((sum, item) => sum + item.total, 0);
-    const taxAmount = subTotal * 0.18;
-    const grandTotal = subTotal + taxAmount;
+    const grandTotal = subTotal;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="Invoice-${items[0].invoice_no}.pdf"`);
     
-    const doc = new PDFDocument({ size: 'A4', margin: 35 });
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
     doc.pipe(res);
 
-    // 🎨 SIMPLIFIED HEADER (More compact)
-    doc.fontSize(20).fillColor('#1e2937').text('SEAFOOD PRO', 45, 25);
-    doc.fontSize(9).fillColor('#6b7280').text('Export Quality Seafood', 45, 42);
+    // Colors
+    const primaryColor = '#1e3a5f';
+    const accentColor = '#2563eb';
+    const lightBg = '#f8fafc';
+    const borderColor = '#e2e8f0';
+    const textDark = '#1e293b';
+    const textLight = '#64748b';
 
-    // 📱 ULTRA-CLEAR INVOICE INFO (Bigger fonts)
-    doc.fontSize(32).fillColor('#111827').text('INVOICE', 45, 80);
+    // Header Background
+    doc.rect(0, 0, 595, 100).fill(primaryColor);
     
-    doc.fontSize(14).fillColor('#374151')
-       .text(`INV-${items[0].invoice_no}`, 420, 85, { width: 140, align: 'right' })
-       .text(new Date(items[0].date).toLocaleDateString('en-IN'), 420, 108, { width: 140, align: 'right' })
-       .text('Due: 30 Days', 420, 131, { width: 140, align: 'right' });
-
-    // 📐 COMPACT BILLING (Tighter spacing)
-    const billY = 155;
-    doc.rect(45, billY, 190, 45).fillColor('#fafbfc').strokeColor('#e2e8f0').stroke();
-    doc.rect(265, billY, 280, 45).fillColor('#fafbfc').strokeColor('#e2e8f0').stroke();
-
-    doc.fontSize(11).fillColor('#1e2937')
-       .text('FROM', 50, billY+7)
-       .text('Seafood Export Co.', 50, billY+22)
-       .fontSize(9).text('GST: 27ABCDE1234F1Z5', 50, billY+35);
-
-    doc.text('TO', 270, billY+7);
-    doc.fontSize(11).fillColor('#1f2937').text(items[0].customer_name || 'Customer', 270, billY+22);
-    if (items[0].customer_phone) 
-      doc.fontSize(9).fillColor('#6b7280').text(items[0].customer_phone, 270, billY+35);
-
-    // 📊 SIMPLIFIED TABLE (Bigger cells)
-    const tableY = 215;
-    doc.rect(45, tableY, 505, 30).fillColor('#f8fafc').strokeColor('#d1d5db').stroke();
+    // Company Name
+    doc.fillColor('white').fontSize(28).font('Helvetica-Bold')
+       .text(company.name || 'SEAFOOD PRO', 40, 25);
     
-    doc.fontSize(13).fillColor('#1f2937')
-       .text('Description', 55, tableY+9)
-       .text('QTY', 300, tableY+9)
-       .text('RATE/KG', 360, tableY+9)
-       .text('TOTAL', 460, tableY+9);
+    // Company Contact
+    doc.fontSize(10).font('Helvetica')
+       .text(`${company.email || ''} | ${company.phone || ''}`, 40, 55);
+    
+    // INVOICE Label
+    doc.fillColor(accentColor).fontSize(36).font('Helvetica-Bold')
+       .text('INVOICE', 400, 30, { align: 'right' });
+    doc.fillColor('white').fontSize(12)
+       .text(`#${items[0].invoice_no}`, 400, 70, { align: 'right' });
 
-    // 📱 PERFECT ROWS (48px height - mobile thumb friendly)
-    let rowY = tableY + 38;
+    // Info Cards
+    let y = 120;
+    
+    // Date Card
+    doc.rect(40, y, 160, 60).fill(lightBg).stroke(borderColor);
+    doc.fillColor(textLight).fontSize(9).font('Helvetica')
+       .text('INVOICE DATE', 50, y+10);
+    doc.fillColor(textDark).fontSize(12).font('Helvetica-Bold')
+       .text(new Date(items[0].date).toLocaleDateString('en-IN', {
+         day: '2-digit', month: 'short', year: 'numeric'
+       }), 50, y+28);
+
+    // Customer Card
+    doc.rect(220, y, 335, 60).fill(lightBg).stroke(borderColor);
+    doc.fillColor(textLight).fontSize(9)
+       .text('BILLED TO', 230, y+10);
+    doc.fillColor(textDark).fontSize(12).font('Helvetica-Bold')
+       .text(items[0].customer_name || 'Customer', 230, y+28);
+    if (items[0].customer_address) {
+      doc.fillColor(textLight).fontSize(9)
+         .text(items[0].customer_address.substring(0, 45), 230, y+45);
+    }
+
+    y += 80;
+
+    // Table Header
+    doc.rect(40, y, 515, 35).fill(primaryColor);
+    doc.fillColor('white').fontSize(10).font('Helvetica-Bold')
+       .text('ITEM', 50, y+12)
+       .text('QTY (KG)', 300, y+12, { align: 'center' })
+       .text('RATE/KG', 380, y+12, { align: 'center' })
+       .text('AMOUNT', 480, y+12, { align: 'right' });
+
+    y += 35;
+    
+    // Table Rows
     safeItems.forEach((item, index) => {
-      doc.rect(45, rowY, 505, 48).strokeColor('#f0f2f5').lineWidth(0.5).stroke();
+      const bgColor = index % 2 === 0 ? 'white' : lightBg;
+      doc.rect(40, y, 515, 45).fill(bgColor).stroke(borderColor);
       
-      doc.fillColor('#1f2937').fontSize(12)
-         .text(item.item_name.substring(0, 28), 55, rowY+10)
-         .fontSize(11).fillColor('#6b7280').text(item.variant_name || 'Premium', 55, rowY+25)
-         .fontSize(12).fillColor('#1f2937')
-         .text(item.quantity.toFixed(2), 315, rowY+18, { width: 35, align: 'right' })
-         .text(`₹${item.price_per_kg.toFixed(2)}`, 385, rowY+18, { width: 45, align: 'right' })
-         .text(`₹${item.total.toFixed(2)}`, 475, rowY+18, { width: 65, align: 'right' });
+      const itemName = item.item_name || 'Item';
+      const variantName = item.variant_name || '';
+      const displayName = variantName ? `${itemName} - ${variantName}` : itemName;
       
-      rowY += 52;
+      doc.fillColor(textDark).fontSize(11).font('Helvetica')
+         .text(displayName.substring(0, 35), 50, y+10)
+         .text(item.quantity.toFixed(2), 300, y+10, { align: 'center' })
+         .text(`₹${item.price_per_kg.toFixed(2)}`, 380, y+10, { align: 'center' })
+         .text(`₹${item.total.toFixed(2)}`, 485, y+10, { align: 'right' });
+      
+      y += 45;
     });
 
-    // 💎 ENHANCED TOTAL SECTION (Full width)
-    const totalY = rowY + 25;
-    doc.rect(45, totalY, 505, 70).fillColor('#f9fafb').strokeColor('#cbd5e1').lineWidth(2).stroke();
+    y += 20;
+
+    // Total Section
+    doc.rect(300, y, 255, 80).fill(lightBg).stroke(borderColor);
+    doc.fillColor(textLight).fontSize(10).font('Helvetica')
+       .text('Subtotal', 315, y+15)
+       .text(`₹${subTotal.toFixed(2)}`, 480, y+15, { align: 'right' });
     
-    doc.fontSize(14).fillColor('#374151')
-       .text('SUBTOTAL', 55, totalY+18)
-       .text(`₹${subTotal.toFixed(2)}`, 485, totalY+18, { width: 55, align: 'right' })
-       .text('GST 18%', 55, totalY+38)
-       .text(`₹${taxAmount.toFixed(2)}`, 485, totalY+38, { width: 55, align: 'right' });
+    y += 40;
+    
+    // Grand Total
+    doc.rect(300, y, 255, 50).fill(primaryColor);
+    doc.fillColor('white').fontSize(14).font('Helvetica-Bold')
+       .text('GRAND TOTAL', 315, y+18);
+    doc.fontSize(18)
+       .text(`₹${grandTotal.toFixed(2)}`, 380, y+16, { align: 'right' });
 
-    // GRAND TOTAL (Bigger + Bolder)
-    doc.rect(45, totalY+55, 505, 15).fillColor('#059669').stroke();
-    doc.fontSize(16).fillColor('white').text('GRAND TOTAL', 55, totalY+58);
-    doc.fontSize(22).fillColor('white')
-       .text(`₹${grandTotal.toFixed(2)}`, 475, totalY+55, { width: 70, align: 'right' });
+    y += 80;
 
-    // ✅ CLEAN SIGNATURE
-    const sigY = totalY + 85;
-    doc.moveTo(45, sigY+5).lineTo(550, sigY+5).lineWidth(2).strokeColor('#d1d5db').stroke();
-    doc.fontSize(12).fillColor('#9ca3af').text('Authorized Signature', 275, sigY+22, { 
-      width: 200, align: 'center' 
-    });
+    // Payment Info
+    doc.fillColor(textDark).fontSize(11).font('Helvetica-Bold')
+       .text('Payment Terms', 40, y);
+    doc.fillColor(textLight).fontSize(10).font('Helvetica')
+       .text('Payment due within 30 days of invoice date.', 40, y+18);
 
-    // 📲 PERFECT FOOTER
-    const footerY = 760;
-    doc.rect(0, footerY, 595, 32).fillColor('#f8fafc').strokeColor('#e5e7eb').stroke();
-    doc.fontSize(10).fillColor('#6b7280')
-       .text('Seafood Pro ERP • Professional Seafood Export Solutions', 45, footerY+12);
+    y += 50;
+
+    // Footer Line
+    doc.moveTo(40, y).lineTo(555, y).lineWidth(1).stroke(borderColor);
+    
+    y += 15;
+    doc.fillColor(textLight).fontSize(9)
+       .text(`${company.name || 'Company'} | All Rights Reserved`, 40, y, { align: 'center' })
+       .text('Thank you for your business!', 40, y + 12, { align: 'center' });
 
     doc.end();
 
@@ -374,6 +411,7 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
     if (!res.headersSent) res.status(500).json({ message: error.message });
   }
 });
+
 
 
 
