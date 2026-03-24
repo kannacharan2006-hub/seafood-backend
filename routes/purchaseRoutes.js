@@ -4,7 +4,42 @@ const verifyToken = require('../middleware/auth');
 const { purchaseValidation } = require('../config/validation');
 const PurchaseService = require('../services/purchaseService');
 
-// CREATE PURCHASE
+/**
+ * @swagger
+ * /api/purchases:
+ *   post:
+ *     summary: Create a new purchase
+ *     tags: [Purchases]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - vendor_id
+ *               - date
+ *               - items
+ *             properties:
+ *               vendor_id:
+ *                 type: integer
+ *               supplier_type:
+ *                 type: string
+ *               date:
+ *                 type: string
+ *                 format: date
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/PurchaseItem'
+ *     responses:
+ *       201:
+ *         description: Purchase created successfully
+ *       403:
+ *         description: Access denied (Owner/Employee only)
+ */
 router.post('/', verifyToken, purchaseValidation.create, async (req, res) => {
   try {
     if (!['OWNER', 'EMPLOYEE'].includes(req.user.role)) {
@@ -21,7 +56,26 @@ router.post('/', verifyToken, purchaseValidation.create, async (req, res) => {
   }
 });
 
-// DELETE PURCHASE
+/**
+ * @swagger
+ * /api/purchases/{id}:
+ *   delete:
+ *     summary: Delete a purchase (Owner only)
+ *     tags: [Purchases]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Purchase deleted and stock restored
+ *       403:
+ *         description: Only Owner can delete
+ */
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'OWNER') {

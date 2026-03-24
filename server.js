@@ -2,8 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
 const { limiter } = require('./config/rateLimit');
 const logger = require('./config/logger');
+const swaggerSpec = require('./config/swagger');
 
 const app = express();
 
@@ -18,6 +20,9 @@ app.use(morgan('combined', {
     write: (message) => logger.info(message.trim())
   }
 }));
+
+/* ================= API DOCUMENTATION ================= */
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 /* ================= RATE LIMITING ================= */
 app.use(limiter);

@@ -5,6 +5,38 @@ const verifyToken = require('../middleware/auth');
 const { exportValidation } = require('../config/validation');
 const ExportService = require('../services/exportService');
 
+/**
+ * @swagger
+ * /api/exports:
+ *   post:
+ *     summary: Create a new export/sale
+ *     tags: [Exports]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customer_id
+ *               - date
+ *               - items
+ *             properties:
+ *               customer_id:
+ *                 type: integer
+ *               date:
+ *                 type: string
+ *                 format: date
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/ExportItem'
+ *     responses:
+ *       201:
+ *         description: Export created successfully
+ */
 router.post('/', verifyToken, exportValidation.create, async (req, res) => {
   try {
     const { customer_id, date, items } = req.body;
@@ -21,6 +53,24 @@ router.post('/', verifyToken, exportValidation.create, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/exports/{id}:
+ *   delete:
+ *     summary: Delete an export and restore stock
+ *     tags: [Exports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Export deleted and stock restored
+ */
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const result = await ExportService.deleteExport(
@@ -33,6 +83,18 @@ router.delete('/:id', verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/exports:
+ *   get:
+ *     summary: Get all exports
+ *     tags: [Exports]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of exports
+ */
 router.get('/', verifyToken, async (req, res) => {
   try {
     const exports = await ExportService.getExports(req.user.company_id);
@@ -42,6 +104,29 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/exports/invoice/{id}:
+ *   get:
+ *     summary: Download invoice PDF
+ *     tags: [Exports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: PDF invoice file
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ */
 router.get('/invoice/:id', verifyToken, async (req, res) => {
   try {
     const { items, company, grandTotal } = await ExportService.getInvoiceData(
