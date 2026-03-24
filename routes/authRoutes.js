@@ -73,6 +73,45 @@ router.post('/forgot-password', authValidation.forgotPassword, async (req, res) 
 
 /**
  * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset password with OTP
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid or expired OTP
+ */
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const result = await AuthService.resetPassword(email, otp, newPassword);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+/**
+ * @swagger
  * /api/auth/users:
  *   post:
  *     summary: Register new user (Owner only)
