@@ -8,6 +8,7 @@ const { limiter } = require('./config/rateLimit');
 const logger = require('./config/logger');
 const swaggerSpec = require('./config/swagger');
 const { wsManager } = require('./config/websocket');
+const SchedulerService = require('./config/scheduler');
 
 const app = express();
 
@@ -79,4 +80,5 @@ wsManager.initialize(server);
 server.listen(PORT, '0.0.0.0', () => {
     logger.info(`Server running on http://0.0.0.0:${PORT}`);
     logger.info(`WebSocket available at ws://0.0.0.0:${PORT}/ws`);
+    SchedulerService.start();
 });
