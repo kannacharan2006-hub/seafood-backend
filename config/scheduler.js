@@ -143,6 +143,24 @@ class SchedulerService {
 
       if (purchases[0].count > 0) {
         await db.promise().query(
+          `INSERT INTO purchases_archive 
+           (purchase_id, vendor_id, supplier_type, date, total_amount, created_by, company_id, archived_at)
+           SELECT id, vendor_id, supplier_type, date, total_amount, created_by, company_id, NOW()
+           FROM purchases WHERE date < ?`,
+          [cutoffDate]
+        );
+
+        await db.promise().query(
+          `INSERT INTO purchase_items_archive 
+           (archive_purchase_id, variant_id, quantity, price_per_kg, total, company_id)
+           SELECT pa.id, pi.variant_id, pi.quantity, pi.price_per_kg, pi.total, pi.company_id
+           FROM purchase_items pi
+           JOIN purchases_archive pa ON pi.purchase_id = pa.purchase_id
+           WHERE pa.archived_at = NOW()`,
+          []
+        );
+
+        await db.promise().query(
           `DELETE FROM purchase_items WHERE purchase_id IN (SELECT id FROM purchases WHERE date < ?)`,
           [cutoffDate]
         );
