@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
+const { conversionValidation } = require('../config/validation');
 
 
 /* =========================================
 CREATE CONVERSION (RAW → FINAL)
 ========================================= */
 
-router.post('/convert', verifyToken, async (req, res) => {
+router.post('/convert', verifyToken, conversionValidation.create, async (req, res) => {
 
 const companyId = req.user.company_id;
 const userId = req.user.id;

@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
+const { customerValidation } = require('../config/validation');
 
 
 /* ================= ADD CUSTOMER ================= */
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', verifyToken, customerValidation.create, async (req, res) => {
 
     try {
 

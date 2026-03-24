@@ -4,6 +4,7 @@ const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const verifyToken = require('../middleware/auth');
+const { authValidation } = require('../config/validation');
 
 const nodemailer = require('nodemailer');
 
@@ -21,7 +22,7 @@ const transporter = nodemailer.createTransport({
 // ==================================================================================================
 // LOGIN
 // ==============================================================
-router.post('/login', async (req, res) => {
+router.post('/login', authValidation.login, async (req, res) => {
 
 const { email, password } = req.body;
 
@@ -76,7 +77,7 @@ company_id: user.company_id
 // ======================
 // FORGOT PASSWORD
 // ======================
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authValidation.forgotPassword, async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -114,7 +115,7 @@ router.post('/forgot-password', async (req, res) => {
 // ======================
 // REGISTER USER
 // ======================
-router.post('/users', verifyToken, async (req, res) => {
+router.post('/users', verifyToken, authValidation.registerUser, async (req, res) => {
 
   const { name, email, password, role, phone } = req.body;
 
@@ -155,7 +156,7 @@ router.post('/users', verifyToken, async (req, res) => {
 
   /* ================= COMPANY REGISTER ================= */
 
-router.post('/register-company', async (req, res) => {
+router.post('/register-company', authValidation.registerCompany, async (req, res) => {
 
 const { company_name, owner_name, email, password, phone } = req.body;
 

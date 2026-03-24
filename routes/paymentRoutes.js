@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
+const { paymentValidation } = require('../config/validation');
 
 
 /* ================= CUSTOMER PAYMENT ================= */
 
-router.post('/customer-payment', verifyToken, async (req, res) => {
+router.post('/customer-payment', verifyToken, paymentValidation.customerPayment, async (req, res) => {
 
 const companyId = req.user.company_id;
 
@@ -186,7 +187,7 @@ res.status(500).json({ message: error.message });
 
 /* ================= VENDOR PAYMENT ================= */
 
-router.post('/vendor-payment', verifyToken, async (req, res) => {
+router.post('/vendor-payment', verifyToken, paymentValidation.vendorPayment, async (req, res) => {
 
 const companyId = req.user.company_id;
 

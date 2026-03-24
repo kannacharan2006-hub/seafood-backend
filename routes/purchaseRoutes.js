@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
+const { purchaseValidation } = require('../config/validation');
 
 
 /* =========================================
 CREATE PURCHASE (TRANSACTION SAFE)
 ========================================= */
 
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', verifyToken, purchaseValidation.create, async (req, res) => {
 
 if (!['OWNER','EMPLOYEE'].includes(req.user.role)) {
 return res.status(403).json({ message: 'Access denied' });

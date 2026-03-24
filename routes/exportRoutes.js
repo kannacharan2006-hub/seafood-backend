@@ -3,13 +3,14 @@ const router = express.Router();
 const db = require('../config/db');
 const PDFDocument = require('pdfkit');
 const verifyToken = require('../middleware/auth');
+const { exportValidation } = require('../config/validation');
 
 
 /* =========================================
    CREATE EXPORT
 ========================================= */
 
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', verifyToken, exportValidation.create, async (req, res) => {
 
 const companyId = req.user.company_id;
 const userId = req.user.id;
