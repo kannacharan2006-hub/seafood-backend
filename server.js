@@ -1,7 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const morgan = require('morgan');
 const { limiter } = require('./config/rateLimit');
+const logger = require('./config/logger');
 
 const app = express();
 
@@ -9,6 +11,13 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+/* ================= LOGGING ================= */
+app.use(morgan('combined', {
+  stream: {
+    write: (message) => logger.info(message.trim())
+  }
+}));
 
 /* ================= RATE LIMITING ================= */
 app.use(limiter);
@@ -34,17 +43,19 @@ app.use('/api/purchase-history', require('./routes/purchaseHistory'));
 /* ================= HEALTH CHECK ================= */
 
 app.get('/', (req, res) => {
+    logger.info('Health check endpoint accessed');
     res.send('Seafood ERP Backend Running');
 });
 
 app.get('/api/test', (req, res) => {
+    logger.info('Test endpoint accessed');
     res.json({ message: 'Test route working' });
 });
 
 /* ================= GLOBAL ERROR HANDLER ================= */
 
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    logger.error(err.message, { stack: err.stack });
     res.status(500).json({
         success: false,
         message: 'Internal Server Error'
@@ -56,5 +67,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+    logger.info(`Server running on http://0.0.0.0:${PORT}`);
 });
