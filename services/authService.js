@@ -44,9 +44,14 @@ const sendEmail = async (to, subject, html) => {
 };
 
 class AuthService {
-  static async login(email, password) {
+  static async login(emailOrPhone, password) {
     return new Promise((resolve, reject) => {
-      db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
+      const isEmail = emailOrPhone.includes('@');
+      let query = isEmail 
+        ? 'SELECT * FROM users WHERE email = ?' 
+        : 'SELECT * FROM users WHERE phone = ?';
+      
+      db.query(query, [emailOrPhone], async (err, results) => {
         if (err) return reject(err);
         if (results.length === 0) return reject(new Error('Invalid credentials'));
 

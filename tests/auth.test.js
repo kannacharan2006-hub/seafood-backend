@@ -14,13 +14,13 @@ describe('Auth Routes', () => {
     it('should return 401 for invalid credentials', async () => {
       const res = await request(app)
         .post('/api/auth/login')
-        .send({ email: 'invalid@test.com', password: 'wrongpassword' });
+        .send({ email_or_phone: 'invalid@test.com', password: 'wrongpassword' });
 
       expect(res.status).toBe(401);
       expect(res.body.message).toBe('Invalid credentials');
     });
 
-    it('should return 400 for missing email', async () => {
+    it('should return 400 for missing email_or_phone', async () => {
       const res = await request(app)
         .post('/api/auth/login')
         .send({ password: 'password123' });
@@ -31,7 +31,7 @@ describe('Auth Routes', () => {
     it('should return 400 for missing password', async () => {
       const res = await request(app)
         .post('/api/auth/login')
-        .send({ email: 'test@test.com' });
+        .send({ email_or_phone: 'test@test.com' });
 
       expect(res.status).toBe(400);
     });

@@ -12,7 +12,7 @@ const validate = (req, res, next) => {
 
 const authValidation = {
   login: [
-    body('email').isEmail().withMessage('Valid email is required'),
+    body('email_or_phone').notEmpty().withMessage('Email or phone number is required'),
     body('password').notEmpty().withMessage('Password is required'),
     validate
   ],

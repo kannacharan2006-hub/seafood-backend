@@ -9,14 +9,23 @@ const AuthService = require('../services/authService');
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: User login
+ *     summary: User login with email or phone
  *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/LoginRequest'
+ *             type: object
+ *             required:
+ *               - email_or_phone
+ *               - password
+ *             properties:
+ *               email_or_phone:
+ *                 type: string
+ *                 description: User's email or phone number
+ *               password:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Login successful
@@ -29,8 +38,8 @@ const AuthService = require('../services/authService');
  */
 router.post('/login', loginLimiter, authValidation.login, async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const result = await AuthService.login(email, password);
+    const { email_or_phone, password } = req.body;
+    const result = await AuthService.login(email_or_phone, password);
     res.json(result);
   } catch (error) {
     res.status(401).json({ message: error.message });
