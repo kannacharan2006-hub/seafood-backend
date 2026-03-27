@@ -4,226 +4,235 @@ const verifyToken = require('../middleware/auth');
 const db = require('../config/db');
 
 router.get('/summary', verifyToken, async (req, res) => {
+  const companyId = req.user.company_id;
+  const { from, to } = req.query;
 
-const companyId = req.user.company_id;
+  // Validate date params
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if ((from && !dateRegex.test(from)) || (to && !dateRegex.test(to))) {
+    return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+  }
 
-try {
+  try {
+    // Build date filter for payments
+    let paymentDateFilter = '';
+    let paymentParams = [companyId];
+    if (from && to) {
+      paymentDateFilter = ' AND date BETWEEN ? AND ? ';
+      paymentParams = [companyId, from, to];
+    }
 
-const { from, to } = req.query;
+    // Build date filter for totals
+    let totalDateFilter = '';
+    let totalParams = [companyId];
+    if (from && to) {
+      totalDateFilter = ' AND date BETWEEN ? AND ? ';
+      totalParams = [companyId, from, to];
+    }
 
-/* ================= STOCK ================= */
+    // Execute all independent queries in parallel using Promise.all
+    const [
+      [rawStock],
+      [finalStock],
+      [todayPurchase],
+      [todaySales],
+      [monthPurchase],
+      [monthSales],
+      [totalPurchase],
+      [totalSales],
+      [vendorPayments],
+      [customerPayments],
+      [recentActivity],
+      [topBuyers],
+      [topSuppliers]
+    ] = await Promise.all([
+      // Stock queries
+      db.promise().query(`
+        SELECT IFNULL(SUM(rs.available_qty),0) AS total
+        FROM raw_stock rs
+        WHERE rs.company_id = ?
+      `, [companyId]),
 
-const [[raw]] = await db.promise().query(`
-SELECT IFNULL(SUM(rs.available_qty),0) AS total
-FROM raw_stock rs
-JOIN variants v ON rs.variant_id = v.id
-WHERE rs.company_id = ?
-`, [companyId]);
+      db.promise().query(`
+        SELECT IFNULL(SUM(fs.available_qty),0) AS total
+        FROM final_stock fs
+        WHERE fs.company_id = ?
+      `, [companyId]),
 
+      // Today queries
+      db.promise().query(`
+        SELECT IFNULL(SUM(pi.total),0) AS total
+        FROM purchases p
+        JOIN purchase_items pi ON p.id = pi.purchase_id
+        WHERE p.company_id = ?
+        AND p.date = CURDATE()
+      `, [companyId]),
 
-const [[final]] = await db.promise().query(`
-SELECT IFNULL(SUM(fs.available_qty),0) AS total
-FROM final_stock fs
-JOIN variants v ON fs.variant_id = v.id
-WHERE fs.company_id = ?
-`, [companyId]);
+      db.promise().query(`
+        SELECT IFNULL(SUM(ei.total),0) AS total
+        FROM exports e
+        JOIN export_items ei ON e.id = ei.export_id
+        WHERE e.company_id = ?
+        AND e.date = CURDATE()
+      `, [companyId]),
 
+      // Month queries
+      db.promise().query(`
+        SELECT IFNULL(SUM(pi.total),0) AS total
+        FROM purchases p
+        JOIN purchase_items pi ON p.id = pi.purchase_id
+        WHERE p.company_id = ?
+        AND DATE_FORMAT(p.date,'%Y-%m') = DATE_FORMAT(CURDATE(),'%Y-%m')
+      `, [companyId]),
 
-/* ================= TODAY ================= */
+      db.promise().query(`
+        SELECT IFNULL(SUM(ei.total),0) AS total
+        FROM exports e
+        JOIN export_items ei ON e.id = ei.export_id
+        WHERE e.company_id = ?
+        AND DATE_FORMAT(e.date,'%Y-%m') = DATE_FORMAT(CURDATE(),'%Y-%m')
+      `, [companyId]),
 
-const [[todayPurchase]] = await db.promise().query(`
-SELECT IFNULL(SUM(pi.total),0) AS total
-FROM purchases p
-JOIN purchase_items pi ON p.id = pi.purchase_id
-WHERE p.company_id = ?
-AND p.date = CURDATE()
-`, [companyId]);
+      // Total purchase with optional date filter
+      db.promise().query(`
+        SELECT IFNULL(SUM(pi.total),0) AS total
+        FROM purchases p
+        JOIN purchase_items pi ON p.id = pi.purchase_id
+        WHERE p.company_id = ? ${totalDateFilter}
+      `, totalParams),
 
-const [[todaySales]] = await db.promise().query(`
-SELECT IFNULL(SUM(ei.total),0) AS total
-FROM exports e
-JOIN export_items ei ON e.id = ei.export_id
-WHERE e.company_id = ?
-AND e.date = CURDATE()
-`, [companyId]);
+      // Total sales with optional date filter
+      db.promise().query(`
+        SELECT IFNULL(SUM(ei.total),0) AS total
+        FROM exports e
+        JOIN export_items ei ON e.id = ei.export_id
+        WHERE e.company_id = ? ${totalDateFilter}
+      `, totalParams),
 
-/* ================= MONTH ================= */
+      // Vendor payments with optional date filter
+      db.promise().query(`
+        SELECT IFNULL(SUM(amount),0) AS total
+        FROM vendor_payments
+        WHERE company_id = ? ${paymentDateFilter}
+      `, paymentParams),
 
-const [[monthPurchase]] = await db.promise().query(`
-SELECT IFNULL(SUM(pi.total),0) AS total
-FROM purchases p
-JOIN purchase_items pi ON p.id = pi.purchase_id
-WHERE p.company_id = ?
-AND DATE_FORMAT(p.date,'%Y-%m') = DATE_FORMAT(CURDATE(),'%Y-%m')
-`, [companyId]);
+      // Customer payments with optional date filter
+      db.promise().query(`
+        SELECT IFNULL(SUM(amount),0) AS total
+        FROM customer_payments
+        WHERE company_id = ? ${paymentDateFilter}
+      `, paymentParams),
 
-const [[monthSales]] = await db.promise().query(`
-SELECT IFNULL(SUM(ei.total),0) AS total
-FROM exports e
-JOIN export_items ei ON e.id = ei.export_id
-WHERE e.company_id = ?
-AND DATE_FORMAT(e.date,'%Y-%m') = DATE_FORMAT(CURDATE(),'%Y-%m')
-`, [companyId]);
+      // Recent activity - fixed UNION with GROUP BY
+      db.promise().query(`
+        SELECT * FROM (
+          SELECT
+            'purchases' AS type,
+            v.name AS name,
+            SUM(pi.total) AS amount,
+            p.date AS date
+          FROM purchases p
+          JOIN vendors v ON p.vendor_id = v.id
+          JOIN purchase_items pi ON p.id = pi.purchase_id
+          WHERE p.company_id = ?
+          GROUP BY p.id
 
-/* ================= TOTAL ================= */
+          UNION ALL
 
-let purchaseQuery = `
-SELECT IFNULL(SUM(pi.total),0) AS total
-FROM purchases p
-JOIN purchase_items pi ON p.id = pi.purchase_id
-WHERE p.company_id = ?
-`;
+          SELECT
+            'sales' AS type,
+            c.name AS name,
+            SUM(ei.total) AS amount,
+            e.date AS date
+          FROM exports e
+          JOIN customers c ON e.customer_id = c.id
+          JOIN export_items ei ON e.id = ei.export_id
+          WHERE e.company_id = ?
+          GROUP BY e.id
 
-let salesQuery = `
-SELECT IFNULL(SUM(ei.total),0) AS total
-FROM exports e
-JOIN export_items ei ON e.id = ei.export_id
-WHERE e.company_id = ?
-`;
+          UNION ALL
 
-let params = [companyId];
+          SELECT
+            'vendor_payment' AS type,
+            v.name AS name,
+            vp.amount AS amount,
+            vp.date AS date
+          FROM vendor_payments vp
+          JOIN vendors v ON vp.vendor_id = v.id
+          WHERE vp.company_id = ?
 
-if (from && to) {
+          UNION ALL
 
-purchaseQuery += " AND p.date BETWEEN ? AND ?";
-salesQuery += " AND e.date BETWEEN ? AND ?";
+          SELECT
+            'customer_payment' AS type,
+            c.name AS name,
+            cp.amount AS amount,
+            cp.date AS date
+          FROM customer_payments cp
+          JOIN customers c ON cp.customer_id = c.id
+          WHERE cp.company_id = ?
 
-params = [companyId, from, to];
+        ) activity
+        ORDER BY date DESC
+        LIMIT 5
+      `, [companyId, companyId, companyId, companyId]),
 
-}
+      // Top 5 buyers
+      db.promise().query(`
+        SELECT c.name, IFNULL(SUM(ei.total),0) AS total_sales
+        FROM exports e
+        JOIN export_items ei ON e.id = ei.export_id
+        JOIN customers c ON e.customer_id = c.id
+        WHERE e.company_id = ?
+        GROUP BY e.customer_id
+        ORDER BY total_sales DESC
+        LIMIT 5
+      `, [companyId]),
 
-const [[totalPurchase]] = await db.promise().query(purchaseQuery, params);
-const [[totalSales]] = await db.promise().query(salesQuery, params);
-/* ================= PAYMENTS ================= */
+      // Top 5 suppliers
+      db.promise().query(`
+        SELECT v.name, IFNULL(SUM(pi.total),0) AS total_purchase
+        FROM purchases p
+        JOIN purchase_items pi ON p.id = pi.purchase_id
+        JOIN vendors v ON p.vendor_id = v.id
+        WHERE p.company_id = ?
+        GROUP BY p.vendor_id
+        ORDER BY total_purchase DESC
+        LIMIT 5
+      `, [companyId])
+    ]);
 
-const [[vendorPayments]] = await db.promise().query(`
-SELECT IFNULL(SUM(amount),0) AS total
-FROM vendor_payments
-WHERE company_id = ?
-`, [companyId]);
+    res.json({
+      raw_stock: Number(rawStock[0].total),
+      final_stock: Number(finalStock[0].total),
 
-const [[customerPayments]] = await db.promise().query(`
-SELECT IFNULL(SUM(amount),0) AS total
-FROM customer_payments
-WHERE company_id = ?
-`, [companyId]);
+      today_purchase_cost: Number(todayPurchase[0].total),
+      today_sales_revenue: Number(todaySales[0].total),
+      today_profit: Number(todaySales[0].total) - Number(todayPurchase[0].total),
 
-/* ================= RECENT ACTIVITY ================= */
+      month_purchase_cost: Number(monthPurchase[0].total),
+      month_sales_revenue: Number(monthSales[0].total),
+      month_profit: Number(monthSales[0].total) - Number(monthPurchase[0].total),
 
-const [recentActivity] = await db.promise().query(`
-SELECT * FROM (
+      total_purchase: Number(totalPurchase[0].total),
+      total_sales: Number(totalSales[0].total),
+      gross_profit: Number(totalSales[0].total) - Number(totalPurchase[0].total),
 
-SELECT
-'purchases' AS type,
-v.name AS name,
-p.total_amount AS amount,
-p.date AS date
-FROM purchases p
-JOIN vendors v ON p.vendor_id = v.id
-WHERE p.company_id = ?
+      vendor_payable:
+        Number(totalPurchase[0].total) - Number(vendorPayments[0].total),
 
-UNION ALL
+      customer_receivable:
+        Number(totalSales[0].total) - Number(customerPayments[0].total),
 
-SELECT
-'sales' AS type,
-c.name AS name,
-SUM(ei.total) AS amount,
-e.date AS date
-FROM exports e
-JOIN customers c ON e.customer_id = c.id
-JOIN export_items ei ON e.id = ei.export_id
-WHERE e.company_id = ?
-GROUP BY e.id
+      top_5_buyers: topBuyers,
+      top_5_suppliers: topSuppliers,
 
-UNION ALL
+      recent_activity: recentActivity
+    });
 
-SELECT
-'vendor_payment' AS type,
-v.name AS name,
-vp.amount AS amount,
-vp.date AS date
-FROM vendor_payments vp
-JOIN vendors v ON vp.vendor_id = v.id
-WHERE vp.company_id = ?
-
-UNION ALL
-
-SELECT
-'customer_payment' AS type,
-c.name AS name,
-cp.amount AS amount,
-cp.date AS date
-FROM customer_payments cp
-JOIN customers c ON cp.customer_id = c.id
-WHERE cp.company_id = ?
-
-) activity
-ORDER BY date DESC
-LIMIT 5
-`, [companyId, companyId, companyId, companyId]);
-
-/* ================= TOP 5 ================= */
-
-const [topBuyers] = await db.promise().query(`
-SELECT c.name, IFNULL(SUM(ei.total),0) AS total_sales
-FROM exports e
-JOIN export_items ei ON e.id = ei.export_id
-JOIN customers c ON e.customer_id = c.id
-WHERE e.company_id = ?
-GROUP BY e.customer_id
-ORDER BY total_sales DESC
-LIMIT 5
-`, [companyId]);
-
-const [topSuppliers] = await db.promise().query(`
-SELECT v.name, IFNULL(SUM(pi.total),0) AS total_purchase
-FROM purchases p
-JOIN purchase_items pi ON p.id = pi.purchase_id
-JOIN vendors v ON p.vendor_id = v.id
-WHERE p.company_id = ?
-GROUP BY p.vendor_id
-ORDER BY total_purchase DESC
-LIMIT 5
-`, [companyId]);
-
-/* ================= RESPONSE ================= */
-
-res.json({
-
-total_raw_stock: Number(raw.total),
-total_final_stock: Number(final.total),
-
-today_purchase_cost: Number(todayPurchase.total),
-today_sales_revenue: Number(todaySales.total),
-today_profit: Number(todaySales.total) - Number(todayPurchase.total),
-
-month_purchase_cost: Number(monthPurchase.total),
-month_sales_revenue: Number(monthSales.total),
-month_profit: Number(monthSales.total) - Number(monthPurchase.total),
-
-total_purchase: Number(totalPurchase.total),
-total_sales: Number(totalSales.total),
-gross_profit: Number(totalSales.total) - Number(totalPurchase.total),
-
-vendor_payable:
-Number(totalPurchase.total) - Number(vendorPayments.total),
-
-customer_receivable:
-Number(totalSales.total) - Number(customerPayments.total),
-
-top_5_buyers: topBuyers,
-top_5_suppliers: topSuppliers,
-
-recent_activity: recentActivity
-
-});
-
-} catch (error) {
-
-res.status(500).json({ error: error.message });
-
-}
-
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 module.exports = router;

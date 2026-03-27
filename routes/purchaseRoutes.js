@@ -3,6 +3,7 @@ const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const { purchaseValidation } = require('../config/validation');
 const PurchaseService = require('../services/purchaseService');
+const { wsManager } = require('../config/websocket');
 
 /**
  * @swagger
@@ -50,6 +51,10 @@ router.post('/', verifyToken, purchaseValidation.create, async (req, res) => {
     const result = await PurchaseService.createPurchase(
       req.user.id, req.user.company_id, vendor_id, supplier_type, date, items
     );
+    
+    wsManager.notifyPurchase(req.user.company_id, result);
+    wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'purchase_added' });
+    
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });

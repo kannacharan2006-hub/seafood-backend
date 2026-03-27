@@ -4,6 +4,7 @@ const PDFDocument = require('pdfkit');
 const verifyToken = require('../middleware/auth');
 const { exportValidation } = require('../config/validation');
 const ExportService = require('../services/exportService');
+const { wsManager } = require('../config/websocket');
 
 /**
  * @swagger
@@ -47,6 +48,10 @@ router.post('/', verifyToken, exportValidation.create, async (req, res) => {
       date,
       items
     );
+    
+    wsManager.notifyExport(req.user.company_id, result);
+    wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'export_added' });
+    
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });

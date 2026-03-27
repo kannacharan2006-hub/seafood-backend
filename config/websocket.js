@@ -174,6 +174,60 @@ class WebSocketManager {
     }
   }
 
+  notifyPayment(companyId, paymentData) {
+    const message = JSON.stringify({
+      type: 'payment_created',
+      data: paymentData,
+      timestamp: new Date().toISOString()
+    });
+
+    const clients = this.clients.get(parseInt(companyId));
+    if (clients) {
+      clients.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+        }
+      });
+      logger.info(`Payment notification sent to company ${companyId}`);
+    }
+  }
+
+  notifyDashboardRefresh(companyId, summaryData) {
+    const message = JSON.stringify({
+      type: 'dashboard_refresh',
+      data: summaryData,
+      timestamp: new Date().toISOString()
+    });
+
+    const clients = this.clients.get(parseInt(companyId));
+    if (clients) {
+      clients.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+        }
+      });
+      logger.info(`Dashboard refresh sent to company ${companyId}`);
+    }
+  }
+
+  notifyStockChange(companyId, changeData) {
+    const message = JSON.stringify({
+      type: 'stock_changed',
+      data: changeData,
+      timestamp: new Date().toISOString()
+    });
+
+    const clients = this.clients.get(parseInt(companyId));
+    if (clients) {
+      clients.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+        }
+      });
+      logger.info(`Stock change notification sent to company ${companyId}`);
+    }
+  }
+
   close() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);

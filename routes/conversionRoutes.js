@@ -3,6 +3,7 @@ const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const { conversionValidation } = require('../config/validation');
 const ConversionService = require('../services/conversionService');
+const { wsManager } = require('../config/websocket');
 
 router.post('/convert', verifyToken, conversionValidation.create, async (req, res) => {
   try {
@@ -10,6 +11,10 @@ router.post('/convert', verifyToken, conversionValidation.create, async (req, re
     const result = await ConversionService.createConversion(
       req.user.id, req.user.company_id, raw_items, final_items, date, notes
     );
+    
+    wsManager.notifyConversion(req.user.company_id, result);
+    wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'conversion_added' });
+    
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -19,6 +24,7 @@ router.post('/convert', verifyToken, conversionValidation.create, async (req, re
 router.delete('/convert/:id', verifyToken, async (req, res) => {
   try {
     const result = await ConversionService.deleteConversion(req.params.id, req.user.company_id);
+    wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'conversion_deleted' });
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
