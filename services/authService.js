@@ -145,7 +145,7 @@ class AuthService {
 
     logger.info(`Password reset successful for ${email}`);
 
-    sendEmail(email, 'Password Changed - Seafood ERP', EmailTemplates.passwordResetSuccess(user.name));
+    await sendEmail(email, 'Password Changed - Seafood ERP', EmailTemplates.passwordResetSuccess(user.name));
 
     return { success: true, message: 'Password reset successful!' };
   }
@@ -182,7 +182,7 @@ class AuthService {
 
     const userId = userResult.insertId;
 
-    sendEmail(email, 'Welcome to Seafood ERP', EmailTemplates.welcomeEmail(owner_name, email, company_name));
+    await sendEmail(email, 'Welcome to Seafood ERP', EmailTemplates.welcomeEmail(owner_name, email, company_name));
 
     const token = jwt.sign(
       { id: userId, role: "OWNER", company_id: companyId },
