@@ -205,6 +205,81 @@ router.get('/customer-ltv', verifyToken, async (req, res) => {
   }
 });
 
+/* 9️⃣ PURCHASE VS SALES PROFIT ANALYSIS */
+router.get('/purchase-vs-sales', verifyToken, async (req, res) => {
+  const companyId = req.user.company_id;
+
+  try {
+    // Get total sales (exports)
+    const [salesData] = await db.promise().query(`
+      SELECT 
+        COALESCE(SUM(ei.total), 0) as total_sales,
+        COALESCE(SUM(ei.quantity), 0) as total_kg_sold
+      FROM exports e 
+      JOIN export_items ei ON e.id = ei.export_id
+      WHERE e.company_id = ?
+    `, [companyId]);
+
+    // Get total purchases
+    const [purchaseData] = await db.promise().query(`
+      SELECT 
+        COALESCE(SUM(pi.total), 0) as total_purchases,
+        COALESCE(SUM(pi.quantity), 0) as total_kg_purchased
+      FROM purchases p 
+      JOIN purchase_items pi ON p.id = pi.purchase_id
+      WHERE p.company_id = ?
+    `, [companyId]);
+
+    const totalSales = parseFloat(salesData[0]?.total_sales || 0);
+    const totalPurchases = parseFloat(purchaseData[0]?.total_purchases || 0);
+    const grossProfit = totalSales - totalPurchases;
+    const profitMargin = totalSales > 0 ? ((grossProfit / totalSales) * 100).toFixed(1) : 0;
+
+    res.json({
+      profit_analysis: {
+        total_sales: totalSales.toFixed(2),
+        total_purchases: totalPurchases.toFixed(2),
+        gross_profit: grossProfit.toFixed(2),
+        profit_margin: profitMargin,
+        kg_sold: parseFloat(salesData[0]?.total_kg_sold || 0),
+        kg_purchased: parseFloat(purchaseData[0]?.total_kg_purchased || 0)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* 🔟 TOP VENDORS BY PURCHASE VOLUME */
+router.get('/top-vendors', verifyToken, async (req, res) => {
+  const companyId = req.user.company_id;
+  const { limit = 10 } = req.query;
+
+  try {
+    const [vendors] = await db.promise().query(`
+      SELECT 
+        v.name, v.phone,
+        COUNT(DISTINCT p.id) as total_orders,
+        COALESCE(SUM(pi.total), 0) as total_purchase_value,
+        COALESCE(SUM(pi.quantity), 0) as total_kg_purchased,
+        AVG(pi.total) as avg_order_value,
+        MAX(p.date) as last_order_date
+      FROM purchases p 
+      JOIN purchase_items pi ON p.id = pi.purchase_id
+      LEFT JOIN vendors v ON p.vendor_id = v.id
+      WHERE p.company_id = ?
+      GROUP BY v.id 
+      HAVING total_purchase_value > 0
+      ORDER BY total_purchase_value DESC 
+      LIMIT ?
+    `, [companyId, parseInt(limit)]);
+
+    res.json({ top_vendors: vendors });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 /* 8️⃣ PRICE TREND ANALYSIS */
 router.get('/price-trends', verifyToken, async (req, res) => {
   const companyId = req.user.company_id;
