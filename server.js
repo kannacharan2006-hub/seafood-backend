@@ -3,8 +3,9 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const morgan = require('morgan');
+const helmet = require('helmet');
 const swaggerUi = require('swagger-ui-express');
-const { limiter } = require('./config/rateLimit');
+const { limiter, authLimiter, loginLimiter } = require('./config/rateLimit');
 const logger = require('./config/logger');
 const swaggerSpec = require('./config/swagger');
 const { wsManager } = require('./config/websocket');
@@ -16,7 +17,13 @@ app.set('trust proxy', 1);
 
 /* ================= MIDDLEWARE ================= */
 
-app.use(cors());
+app.use(helmet());
+// Configure CORS with restrictions
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(requestIdMiddleware);
 app.use(requestLogger);

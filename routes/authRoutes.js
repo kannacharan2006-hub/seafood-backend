@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const { authValidation } = require('../config/validation');
-const { loginLimiter } = require('../config/rateLimit');
+const { loginLimiter, authLimiter } = require('../config/rateLimit');
 const AuthService = require('../services/authService');
+const ApiResponse = require('../utils/response');
 
 /**
  * @swagger
@@ -40,9 +41,9 @@ router.post('/login', loginLimiter, authValidation.login, async (req, res) => {
   try {
     const { email_or_phone, password } = req.body;
     const result = await AuthService.login(email_or_phone, password);
-    res.json(result);
+    ApiResponse.success(res, result, 'Login successful');
   } catch (error) {
-    res.status(401).json({ message: error.message });
+    ApiResponse.unauthorized(res, error.message);
   }
 });
 
@@ -70,13 +71,20 @@ router.post('/login', loginLimiter, authValidation.login, async (req, res) => {
  *       404:
  *         description: User not found
  */
-router.post('/forgot-password', authValidation.forgotPassword, async (req, res) => {
+router.post('/forgot-password', authLimiter, authValidation.forgotPassword, async (req, res) => {
   try {
     const { email } = req.body;
     const result = await AuthService.forgotPassword(email);
-    res.json(result);
+    ApiResponse.success(res, result, 'OTP sent to email!');
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    // Handle specific error cases
+    if (error.message.includes('No account found')) {
+      ApiResponse.notFound(res, error.message);
+    } else if (error.message.includes('Failed to send email')) {
+      ApiResponse.error(res, error.message, 500);
+    } else {
+      ApiResponse.error(res, error.message, 500);
+    }
   }
 });
 
@@ -109,13 +117,20 @@ router.post('/forgot-password', authValidation.forgotPassword, async (req, res) 
  *       400:
  *         description: Invalid or expired OTP
  */
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authLimiter, async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     const result = await AuthService.resetPassword(email, otp, newPassword);
-    res.json(result);
+    ApiResponse.success(res, result, 'Password reset successful!');
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    // Handle specific error cases
+    if (error.message.includes('Invalid email or OTP') || 
+        error.message.includes('Invalid OTP') || 
+        error.message.includes('OTP has expired')) {
+      ApiResponse.error(res, error.message, 400);
+    } else {
+      ApiResponse.error(res, error.message, 500);
+    }
   }
 });
 
@@ -158,14 +173,14 @@ router.post('/reset-password', async (req, res) => {
  *       403:
  *         description: Access denied
  */
-router.post('/users', verifyToken, authValidation.registerUser, async (req, res) => {
+router.post('/users', verifyToken, authLimiter, authValidation.registerUser, async (req, res) => {
   try {
     const { name, email, password, role, phone } = req.body;
     const company_id = req.user.company_id;
     const result = await AuthService.registerUser(name, email, password, role, phone, company_id);
-    res.status(201).json(result);
+    ApiResponse.success(res, result, 'User registered successfully', 201);
   } catch (error) {
-    res.status(500).json(error);
+    ApiResponse.error(res, error.message, 500);
   }
 });
 
@@ -205,13 +220,13 @@ router.post('/users', verifyToken, authValidation.registerUser, async (req, res)
  *       400:
  *         description: Validation error
  */
-router.post('/register-company', authValidation.registerCompany, async (req, res) => {
+router.post('/register-company', authLimiter, authValidation.registerCompany, async (req, res) => {
   try {
     const { company_name, owner_name, email, password, phone } = req.body;
     const result = await AuthService.registerCompany(company_name, owner_name, email, password, phone);
-    res.status(201).json(result);
+    ApiResponse.success(res, result, 'Company created successfully', 201);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    ApiResponse.error(res, error.message, 500);
   }
 });
 
