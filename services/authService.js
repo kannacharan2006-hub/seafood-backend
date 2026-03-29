@@ -111,29 +111,6 @@ class AuthService {
        throw new Error('Failed to send email. Please try again later.');
      }
  
-     logger.info(`Password reset OTP sent to ${email}`);
-     return { success: true, message: 'OTP sent to email!' };
-   }
-
-    const user = users[0];
-    const crypto = require('crypto');
-    const resetToken = crypto.randomBytes(3).toString('hex').toUpperCase().substring(0, 6);
-
-    await db.promise().query(
-      'UPDATE users SET reset_token = ?, reset_token_expiry = DATE_ADD(NOW(), INTERVAL 15 MINUTE) WHERE id = ?',
-      [resetToken, user.id]
-    );
-
-    const emailSent = await sendEmail(
-      email,
-      'Password Reset - Seafood ERP',
-      EmailTemplates.passwordReset(resetToken, user.name)
-    );
-
-    if (!emailSent) {
-      throw new Error('Failed to send email. Please try again later.');
-    }
-
     logger.info(`Password reset OTP sent to ${email}`);
     return { success: true, message: 'OTP sent to email!' };
   }
