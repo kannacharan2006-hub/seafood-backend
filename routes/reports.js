@@ -69,7 +69,7 @@ router.get('/top-customers', verifyToken, async (req, res) => {
   }
 });
 
-/* 3️⃣ TOP PRODUCTS - Best Sellers */
+/* 3️⃣ TOP PRODUCTS - Best Sellers with Profit */
 router.get('/top-products', verifyToken, async (req, res) => {
   const companyId = req.user.company_id;
   const { limit = 10 } = req.query;
@@ -80,16 +80,39 @@ router.get('/top-products', verifyToken, async (req, res) => {
         i.name, v.variant_name,
         SUM(ei.quantity) as kg_sold,
         SUM(ei.total) as revenue,
-        AVG(ei.price_per_kg) as avg_price,
+        AVG(ei.price_per_kg) as avg_selling_price,
         COUNT(DISTINCT e.id) as invoices
-      FROM exports e JOIN export_items ei ON e.id = ei.export_id
+      FROM exports e 
+      JOIN export_items ei ON e.id = ei.export_id
       JOIN variants v ON ei.variant_id = v.id
       JOIN items i ON v.item_id = i.id
       WHERE e.company_id = ?
-      GROUP BY i.id, v.id ORDER BY kg_sold DESC LIMIT ?
+      GROUP BY i.id, v.id 
+      HAVING kg_sold > 0
+      ORDER BY kg_sold DESC 
+      LIMIT ?
     `, [companyId, parseInt(limit)]);
 
-    res.json({ best_sellers: products });
+    // Calculate estimated profit (assume 15% cost margin if no cost data)
+    const productsWithProfit = products.map(p => {
+      const revenue = parseFloat(p.revenue || 0);
+      const kgSold = parseFloat(p.kg_sold || 0);
+      const avgSelling = parseFloat(p.avg_selling_price || 0);
+      
+      // Estimate cost as 70% of selling price (typical for seafood business)
+      const estimatedCost = avgSelling * 0.70;
+      const profit = revenue - (estimatedCost * kgSold);
+      const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : 0;
+      
+      return {
+        ...p,
+        profit: profit.toFixed(2),
+        margin: margin,
+        avg_selling_price: avgSelling.toFixed(2)
+      };
+    });
+
+    res.json({ best_sellers: productsWithProfit });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
