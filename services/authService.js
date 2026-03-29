@@ -92,7 +92,8 @@ class AuthService {
     }
 
     const user = users[0];
-    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const crypto = require('crypto');
+    const resetToken = crypto.randomBytes(3).toString('hex').toUpperCase().substring(0, 6);
 
     await db.promise().query(
       'UPDATE users SET reset_token = ?, reset_token_expiry = DATE_ADD(NOW(), INTERVAL 15 MINUTE) WHERE id = ?',
