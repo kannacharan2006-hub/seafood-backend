@@ -41,7 +41,11 @@ router.post('/login', loginLimiter, authValidation.login, async (req, res) => {
   try {
     const { email_or_phone, password } = req.body;
     const result = await AuthService.login(email_or_phone, password);
-    ApiResponse.success(res, result, 'Login successful');
+    res.json({
+      success: true,
+      message: 'Login successful',
+      ...result
+    });
   } catch (error) {
     ApiResponse.unauthorized(res, error.message);
   }
