@@ -1,37 +1,33 @@
 class PaginationHelper {
-  static const int defaultPage = 1;
-  static const int defaultLimit = 20;
-  static const int maxLimit = 100;
+  static defaultPage = 1;
+  static defaultLimit = 20;
+  static maxLimit = 100;
 
-  static Map<String, dynamic> paginate({
-    required int page,
-    required int limit,
-    required int totalItems,
-  }) {
-    final totalPages = (totalItems / limit).ceil();
+  static paginate({ page, limit, totalItems }) {
+    const totalPages = Math.ceil(totalItems / limit);
     
     return {
-      'currentPage': page,
-      'totalPages': totalPages,
-      'totalItems': totalItems,
-      'itemsPerPage': limit,
-      'hasNextPage': page < totalPages,
-      'hasPrevPage': page > 1,
+      currentPage: page,
+      totalPages,
+      totalItems,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
     };
   }
 
-  static int getOffset(int page, int limit) {
+  static getOffset(page, limit) {
     return (page - 1) * limit;
   }
 
-  static int getLimit(int? limit) {
-    if (limit == null || limit <= 0) return defaultLimit;
-    if (limit > maxLimit) return maxLimit;
+  static getLimit(limit) {
+    if (limit == null || limit <= 0) return this.defaultLimit;
+    if (limit > this.maxLimit) return this.maxLimit;
     return limit;
   }
 
-  static int getPage(int? page) {
-    if (page == null || page <= 0) return defaultPage;
+  static getPage(page) {
+    if (page == null || page <= 0) return this.defaultPage;
     return page;
   }
 }
