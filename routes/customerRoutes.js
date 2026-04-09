@@ -6,9 +6,6 @@ const CustomerService = require('../services/customerService');
 
 router.post('/', verifyToken, customerValidation.create, async (req, res) => {
   try {
-    if (req.user.role !== 'OWNER') {
-      return res.status(403).json({ message: "Only Owner can add customers" });
-    }
     const { name, phone, address } = req.body;
     const result = await CustomerService.createCustomer(req.user.company_id, name, phone, address);
     res.json(result);

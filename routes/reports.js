@@ -3,10 +3,20 @@ const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
 
+const requireOwner = (req, res, next) => {
+  if (req.user.role !== 'OWNER') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Only owners can view this report.'
+    });
+  }
+  next();
+};
+
 /* ==================== 8x VALUABLE BUSINESS REPORTS ==================== */
 
 /* 1️⃣ DAILY SALES DASHBOARD */
-router.get('/daily-sales', verifyToken, async (req, res) => {
+router.get('/daily-sales', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
   const { from, to } = req.query;
 
@@ -43,7 +53,7 @@ router.get('/daily-sales', verifyToken, async (req, res) => {
 });
 
 /* 2️⃣ TOP CUSTOMERS - Revenue Whales */
-router.get('/top-customers', verifyToken, async (req, res) => {
+router.get('/top-customers', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
   const { limit = 10 } = req.query;
 
@@ -70,7 +80,7 @@ router.get('/top-customers', verifyToken, async (req, res) => {
 });
 
 /* 3️⃣ TOP PRODUCTS - Best Sellers with Profit */
-router.get('/top-products', verifyToken, async (req, res) => {
+router.get('/top-products', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
   const { limit = 10 } = req.query;
 
@@ -119,7 +129,7 @@ router.get('/top-products', verifyToken, async (req, res) => {
 });
 
 /* 4️⃣ REVENUE PERFORMANCE - Price Analysis */
-router.get('/revenue-performance', verifyToken, async (req, res) => {
+router.get('/revenue-performance', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
   const { from, to } = req.query;
 
@@ -149,7 +159,7 @@ router.get('/revenue-performance', verifyToken, async (req, res) => {
 });
 
 /* 5️⃣ MONTHLY TRENDS - Growth Analytics */
-router.get('/monthly-trends', verifyToken, async (req, res) => {
+router.get('/monthly-trends', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
   const months = parseInt(req.query.months) || 6;
 
@@ -173,7 +183,7 @@ router.get('/monthly-trends', verifyToken, async (req, res) => {
 });
 
 /* 6️⃣ INVOICE STATUS - Payment Tracking */
-router.get('/invoice-status', verifyToken, async (req, res) => {
+router.get('/invoice-status', verifyToken, requireOwner, async (req, res) => {
 
   const companyId = req.user.company_id;
 
@@ -202,7 +212,7 @@ router.get('/invoice-status', verifyToken, async (req, res) => {
 });
 
 /* 7️⃣ CUSTOMER LIFETIME VALUE */
-router.get('/customer-ltv', verifyToken, async (req, res) => {
+router.get('/customer-ltv', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
 
   try {
@@ -229,7 +239,7 @@ router.get('/customer-ltv', verifyToken, async (req, res) => {
 });
 
 /* 9️⃣ PURCHASE VS SALES PROFIT ANALYSIS */
-router.get('/purchase-vs-sales', verifyToken, async (req, res) => {
+router.get('/purchase-vs-sales', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
 
   try {
@@ -274,7 +284,7 @@ router.get('/purchase-vs-sales', verifyToken, async (req, res) => {
 });
 
 /* 🔟 TOP VENDORS BY PURCHASE VOLUME */
-router.get('/top-vendors', verifyToken, async (req, res) => {
+router.get('/top-vendors', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
   const { limit = 10 } = req.query;
 
@@ -304,7 +314,7 @@ router.get('/top-vendors', verifyToken, async (req, res) => {
 });
 
 /* 8️⃣ PRICE TREND ANALYSIS */
-router.get('/price-trends', verifyToken, async (req, res) => {
+router.get('/price-trends', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
   const { product_name } = req.query;
 

@@ -6,7 +6,17 @@ const { paymentLimiter } = require('../config/rateLimit');
 const PaymentService = require('../services/paymentService');
 const { wsManager } = require('../config/websocket');
 
-router.post('/customer-payment', paymentLimiter, verifyToken, paymentValidation.customerPayment, async (req, res) => {
+const requireOwner = (req, res, next) => {
+  if (req.user.role !== 'OWNER') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Only owners can access payments.'
+    });
+  }
+  next();
+};
+
+router.post('/customer-payment', paymentLimiter, verifyToken, requireOwner, paymentValidation.customerPayment, async (req, res) => {
   try {
     const result = await PaymentService.recordCustomerPayment(
       req.user.company_id, req.body.customer_id, req.body.amount
@@ -21,7 +31,7 @@ router.post('/customer-payment', paymentLimiter, verifyToken, paymentValidation.
   }
 });
 
-router.get('/customer-balance/:id', verifyToken, async (req, res) => {
+router.get('/customer-balance/:id', verifyToken, requireOwner, async (req, res) => {
   try {
     const result = await PaymentService.getCustomerBalance(req.user.company_id, req.params.id);
     res.json(result);
@@ -30,7 +40,7 @@ router.get('/customer-balance/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/vendor-balance/:id', verifyToken, async (req, res) => {
+router.get('/vendor-balance/:id', verifyToken, requireOwner, async (req, res) => {
   try {
     const result = await PaymentService.getVendorBalance(req.user.company_id, req.params.id);
     res.json(result);
@@ -39,7 +49,7 @@ router.get('/vendor-balance/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/customer-payment-history/:id', verifyToken, async (req, res) => {
+router.get('/customer-payment-history/:id', verifyToken, requireOwner, async (req, res) => {
   try {
     const result = await PaymentService.getCustomerPaymentHistory(req.user.company_id, req.params.id);
     res.json(result);
@@ -48,7 +58,7 @@ router.get('/customer-payment-history/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/vendor-payment-history/:id', verifyToken, async (req, res) => {
+router.get('/vendor-payment-history/:id', verifyToken, requireOwner, async (req, res) => {
   try {
     const result = await PaymentService.getVendorPaymentHistory(req.user.company_id, req.params.id);
     res.json(result);
@@ -57,7 +67,7 @@ router.get('/vendor-payment-history/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/vendor-payment', paymentLimiter, verifyToken, paymentValidation.vendorPayment, async (req, res) => {
+router.post('/vendor-payment', paymentLimiter, verifyToken, requireOwner, paymentValidation.vendorPayment, async (req, res) => {
   try {
     const result = await PaymentService.recordVendorPayment(
       req.user.company_id, req.body.vendor_id, req.body.amount

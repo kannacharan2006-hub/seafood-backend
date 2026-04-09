@@ -6,9 +6,6 @@ const VendorService = require('../services/vendorService');
 
 router.post('/vendors', verifyToken, vendorValidation.create, async (req, res) => {
   try {
-    if (req.user.role !== 'OWNER') {
-      return res.status(403).json({ message: "Only Owner can add vendors" });
-    }
     const { name, phone, address } = req.body;
     const result = await VendorService.createVendor(req.user.company_id, name, phone, address);
     res.json(result);

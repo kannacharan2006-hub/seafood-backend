@@ -3,8 +3,20 @@ const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const db = require('../config/db');
 
+const requireOwner = (req, res, next) => {
+  if (req.user.role !== 'OWNER') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Only owners can access this data.'
+    });
+  }
+  next();
+};
+
 router.get('/summary', verifyToken, async (req, res) => {
   const companyId = req.user.company_id;
+  const userRole = req.user.role;
+  const isEmployee = userRole === 'EMPLOYEE';
   const { from, to } = req.query;
 
   // Validate date params
@@ -208,26 +220,24 @@ router.get('/summary', verifyToken, async (req, res) => {
 
       today_purchase_cost: Number(todayPurchase[0].total),
       today_sales_revenue: Number(todaySales[0].total),
-      today_profit: Number(todaySales[0].total) - Number(todayPurchase[0].total),
+      today_profit: isEmployee ? null : Number(todaySales[0].total) - Number(todayPurchase[0].total),
 
       month_purchase_cost: Number(monthPurchase[0].total),
       month_sales_revenue: Number(monthSales[0].total),
-      month_profit: Number(monthSales[0].total) - Number(monthPurchase[0].total),
+      month_profit: isEmployee ? null : Number(monthSales[0].total) - Number(monthPurchase[0].total),
 
       total_purchase: Number(totalPurchase[0].total),
       total_sales: Number(totalSales[0].total),
-      gross_profit: Number(totalSales[0].total) - Number(totalPurchase[0].total),
+      gross_profit: isEmployee ? null : Number(totalSales[0].total) - Number(totalPurchase[0].total),
 
-      vendor_payable:
-        Number(totalPurchase[0].total) - Number(vendorPayments[0].total),
+      vendor_payable: isEmployee ? null : (Number(totalPurchase[0].total) - Number(vendorPayments[0].total)),
 
-      customer_receivable:
-        Number(totalSales[0].total) - Number(customerPayments[0].total),
+      customer_receivable: isEmployee ? null : (Number(totalSales[0].total) - Number(customerPayments[0].total)),
 
       top_5_buyers: topBuyers,
       top_5_suppliers: topSuppliers,
 
-      recent_activity: recentActivity
+      recent_activity: isEmployee ? null : recentActivity
     });
 
   } catch (error) {
