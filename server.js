@@ -57,6 +57,7 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/items', require('./routes/items'));
 app.use('/api/variants', require('./routes/variants'));
 app.use('/api/purchase-history', require('./routes/purchaseHistory'));
+app.use('/health', require('./routes/healthRoutes'));
 
 /* ================= HEALTH CHECK ================= */
 
@@ -97,5 +98,10 @@ wsManager.initialize(server);
 server.listen(PORT, '0.0.0.0', () => {
     logger.info(`Server running on http://0.0.0.0:${PORT}`);
     logger.info(`WebSocket available at ws://0.0.0.0:${PORT}/ws`);
+    logger.info(`Health check available at http://0.0.0.0:${PORT}/health`);
     SchedulerService.start();
+    
+    // Start scheduled backups
+    const BackupService = require('./services/backupService');
+    BackupService.startScheduledBackups();
 });

@@ -40,9 +40,42 @@ const paymentLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute for general API
+  message: {
+    message: 'Too many API requests, please slow down.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const dataEntryLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute for data entry (purchase, export, etc)
+  message: {
+    message: 'Too many data entry requests, please slow down.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 searches per minute
+  message: {
+    message: 'Too many search requests, please slow down.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 module.exports = {
   limiter,
   authLimiter,
   loginLimiter,
-  paymentLimiter
+  paymentLimiter,
+  apiLimiter,
+  dataEntryLimiter,
+  searchLimiter
 };
