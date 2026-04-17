@@ -1,15 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
+const Database = require('../config/database');
 const verifyToken = require('../middleware/auth');
 const ApiResponse = require('../utils/response');
 
 router.get('/raw-stock', verifyToken, async (req, res) => {
-  const companyId = req.user.company_id;
-
   try {
-    const [rows] = await db.promise().query(
-      `SELECT
+    const rows = await Database.getAll(`
+      SELECT
         i.name AS item_name,
         v.variant_name,
         c.name AS category_name,
@@ -18,11 +16,8 @@ router.get('/raw-stock', verifyToken, async (req, res) => {
       JOIN variants v ON rs.variant_id = v.id
       JOIN items i ON v.item_id = i.id
       JOIN categories c ON i.category_id = c.id
-      WHERE rs.available_qty > 0
-      AND rs.company_id = ?`,
-      [companyId]
-    );
-
+      WHERE rs.available_qty > 0 AND rs.company_id = ?
+    `, [req.user.company_id]);
     ApiResponse.success(res, rows);
   } catch (error) {
     ApiResponse.error(res, error.message);
@@ -30,11 +25,9 @@ router.get('/raw-stock', verifyToken, async (req, res) => {
 });
 
 router.get('/final-stock', verifyToken, async (req, res) => {
-  const companyId = req.user.company_id;
-
   try {
-    const [rows] = await db.promise().query(
-      `SELECT
+    const rows = await Database.getAll(`
+      SELECT
         i.name AS item_name,
         v.variant_name,
         c.name AS category_name,
@@ -43,11 +36,8 @@ router.get('/final-stock', verifyToken, async (req, res) => {
       JOIN variants v ON fs.variant_id = v.id
       JOIN items i ON v.item_id = i.id
       JOIN categories c ON i.category_id = c.id
-      WHERE fs.available_qty > 0
-      AND fs.company_id = ?`,
-      [companyId]
-    );
-
+      WHERE fs.available_qty > 0 AND fs.company_id = ?
+    `, [req.user.company_id]);
     ApiResponse.success(res, rows);
   } catch (error) {
     ApiResponse.error(res, error.message);

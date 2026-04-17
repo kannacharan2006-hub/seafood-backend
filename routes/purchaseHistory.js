@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
+const Database = require('../config/database');
 const verifyToken = require('../middleware/auth');
 const ApiResponse = require('../utils/response');
 
@@ -11,14 +11,10 @@ router.get('/', verifyToken, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    const [countResult] = await db.promise().query(
-      `SELECT COUNT(*) as total FROM purchases WHERE company_id = ?`,
-      [companyId]
-    );
-    const totalItems = countResult[0].total;
+    const totalItems = await Database.count('purchases', 'company_id = ?', [companyId]);
     const totalPages = Math.ceil(totalItems / limit);
 
-    const [results] = await db.promise().query(`
+    const results = await Database.getAll(`
       SELECT
         p.id AS purchase_id,
         p.date,
@@ -35,14 +31,7 @@ router.get('/', verifyToken, async (req, res) => {
 
     ApiResponse.success(res, {
       data: results,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalItems,
-        itemsPerPage: limit,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
-      }
+      pagination: { currentPage: page, totalPages, totalItems, itemsPerPage: limit, hasNextPage: page < totalPages, hasPrevPage: page > 1 }
     });
   } catch (error) {
     ApiResponse.error(res, error.message);
@@ -54,7 +43,7 @@ router.get('/:id', verifyToken, async (req, res) => {
   const purchaseId = req.params.id;
 
   try {
-    const [header] = await db.promise().query(`
+    const header = await Database.getOne(`
       SELECT
         p.id AS purchase_id,
         p.date,
@@ -64,15 +53,14 @@ router.get('/:id', verifyToken, async (req, res) => {
       FROM purchases p
       JOIN vendors ven ON p.vendor_id = ven.id
       JOIN users u ON p.created_by = u.id
-      WHERE p.id = ?
-      AND p.company_id = ?
+      WHERE p.id = ? AND p.company_id = ?
     `, [purchaseId, companyId]);
 
-    if (header.length === 0) {
+    if (!header) {
       return ApiResponse.notFound(res, 'Purchase not found');
     }
 
-    const [items] = await db.promise().query(`
+    const items = await Database.getAll(`
       SELECT
         i.name AS item_name,
         var.variant_name,
@@ -82,11 +70,10 @@ router.get('/:id', verifyToken, async (req, res) => {
       FROM purchase_items pi
       JOIN variants var ON pi.variant_id = var.id
       JOIN items i ON var.item_id = i.id
-      WHERE pi.purchase_id = ?
-      AND pi.company_id = ?
+      WHERE pi.purchase_id = ? AND pi.company_id = ?
     `, [purchaseId, companyId]);
 
-    ApiResponse.success(res, { ...header[0], items });
+    ApiResponse.success(res, { ...header, items });
   } catch (error) {
     ApiResponse.error(res, error.message);
   }
