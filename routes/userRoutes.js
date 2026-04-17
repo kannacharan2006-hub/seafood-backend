@@ -3,142 +3,82 @@ const router = express.Router();
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const verifyToken = require('../middleware/auth');
-
-
-/* ================= LIST COMPANY USERS ================= */
+const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
-
-  const userRole = req.user.role;
-
-  if (userRole !== 'OWNER') {
-    return res.status(403).json({
-      message: 'Access denied'
-    });
+  if (req.user.role !== 'OWNER') {
+    return ApiResponse.forbidden(res, 'Access denied');
   }
 
   const companyId = req.user.company_id;
 
   try {
-
     const [results] = await db.promise().query(
-      `SELECT id, name, role
-FROM users
-WHERE company_id = ?
-ORDER BY name ASC`,
+      `SELECT id, name, role FROM users WHERE company_id = ? ORDER BY name ASC`,
       [companyId]
     );
 
-    res.json(results);
-
+    ApiResponse.success(res, results);
   } catch (error) {
-
-    res.status(500).json({
-      error: error.message
-    });
-
+    ApiResponse.error(res, error.message);
   }
-
 });
-/* ================= CREATE EMPLOYEE ================= */
 
 router.post('/', verifyToken, async (req, res) => {
-
-  console.log("BODY:", req.body);
-  console.log("USER:", req.user);
-
-  const userRole = req.user.role;
-
-  if (userRole !== 'OWNER') {
-  return res.status(403).json({ message: 'Access denied' });
+  if (req.user.role !== 'OWNER') {
+    return ApiResponse.forbidden(res, 'Access denied');
   }
 
   const companyId = req.user.company_id;
-
   const { name, email, password, phone, role } = req.body;
 
   try {
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+    const [result] = await db.promise().query(
+      `INSERT INTO users (name, email, password_hash, phone, role, company_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [name, email, hashedPassword, phone, role || 'EMPLOYEE', companyId]
+    );
 
-  const [result] = await db.promise().query(
-  `INSERT INTO users (name, email, password_hash, phone, role, company_id)
-  VALUES (?, ?, ?, ?, ?, ?)`,
-  [name, email, hashedPassword, phone, role || 'EMPLOYEE', companyId]
-  );
-
-  console.log("INSERT RESULT:", result);
-
-  res.status(201).json({ message: "Employee created" });
-
+    ApiResponse.success(res, { id: result.insertId }, 'Employee created', 201);
   } catch (error) {
-
-  console.log("ERROR:", error);
-
-  res.status(500).json({ error: error.message });
-
+    ApiResponse.error(res, error.message);
   }
-
-  });
-/* ================= DELETE EMPLOYEE ================= */
-
-router.delete('/:id', verifyToken, async (req, res) => {
-
-const userRole = req.user.role;
-
-if (userRole !== 'OWNER') {
-return res.status(403).json({ message: 'Access denied' });
-}
-
-const id = req.params.id;
-
-try {
-
-await db.promise().query(
-`DELETE FROM users WHERE id = ?`,
-[id]
-);
-
-res.json({ message: "Employee deleted" });
-
-} catch (error) {
-
-res.status(500).json({ error: error.message });
-
-}
-
 });
 
-/* ================= UPDATE EMPLOYEE ================= */
+router.delete('/:id', verifyToken, async (req, res) => {
+  if (req.user.role !== 'OWNER') {
+    return ApiResponse.forbidden(res, 'Access denied');
+  }
+
+  const id = req.params.id;
+
+  try {
+    await db.promise().query(`DELETE FROM users WHERE id = ?`, [id]);
+    ApiResponse.success(res, null, 'Employee deleted');
+  } catch (error) {
+    ApiResponse.error(res, error.message);
+  }
+});
 
 router.put('/:id', verifyToken, async (req, res) => {
+  if (req.user.role !== 'OWNER') {
+    return ApiResponse.forbidden(res, 'Access denied');
+  }
 
-const userRole = req.user.role;
+  const id = req.params.id;
+  const { name, email, phone } = req.body;
 
-if (userRole !== 'OWNER') {
-return res.status(403).json({ message: 'Access denied' });
-}
-
-const id = req.params.id;
-const { name, email, phone } = req.body;
-
-try {
-
-await db.promise().query(
-`UPDATE users
-SET name = ?, email = ?, phone = ?
-WHERE id = ?`,
-[name, email, phone, id]
-);
-
-res.json({ message: "Employee updated" });
-
-} catch (error) {
-
-res.status(500).json({ error: error.message });
-
-}
-
+  try {
+    await db.promise().query(
+      `UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?`,
+      [name, email, phone, id]
+    );
+    ApiResponse.success(res, null, 'Employee updated');
+  } catch (error) {
+    ApiResponse.error(res, error.message);
+  }
 });
 
 module.exports = router;

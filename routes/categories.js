@@ -2,31 +2,18 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
-
-
-/* ================= ALL CATEGORIES ================= */
+const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
-
-  const companyId = req.user.company_id;
-
   try {
-
     const [rows] = await db.promise().query(
-      `SELECT id, name
-FROM categories
-ORDER BY name`
-
+      `SELECT id, name FROM categories ORDER BY name`
     );
 
-    res.json(rows);
-
+    ApiResponse.success(res, rows);
   } catch (error) {
-
-    res.status(500).json({ error: error.message });
-
+    ApiResponse.error(res, error.message);
   }
-
 });
 
 module.exports = router;

@@ -4,6 +4,7 @@ const verifyToken = require('../middleware/auth');
 const { conversionValidation } = require('../config/validation');
 const ConversionService = require('../services/conversionService');
 const { wsManager } = require('../config/websocket');
+const ApiResponse = require('../utils/response');
 
 router.post('/convert', verifyToken, conversionValidation.create, async (req, res) => {
   try {
@@ -15,9 +16,9 @@ router.post('/convert', verifyToken, conversionValidation.create, async (req, re
     wsManager.notifyConversion(req.user.company_id, result);
     wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'conversion_added' });
     
-    res.status(201).json(result);
+    ApiResponse.success(res, result, 'Conversion created', 201);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    ApiResponse.error(res, error.message, 400);
   }
 });
 
@@ -25,9 +26,9 @@ router.delete('/convert/:id', verifyToken, async (req, res) => {
   try {
     const result = await ConversionService.deleteConversion(req.params.id, req.user.company_id);
     wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'conversion_deleted' });
-    res.json(result);
+    ApiResponse.success(res, result, 'Conversion deleted');
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    ApiResponse.error(res, error.message, 400);
   }
 });
 
@@ -36,9 +37,9 @@ router.get('/convert', verifyToken, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const result = await ConversionService.getConversions(req.user.company_id, page, limit);
-    res.json(result);
+    ApiResponse.success(res, result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 

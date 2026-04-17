@@ -2,13 +2,11 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
+const ApiResponse = require('../utils/response');
 
 const requireOwner = (req, res, next) => {
   if (req.user.role !== 'OWNER') {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied. Only owners can view this report.'
-    });
+    return ApiResponse.forbidden(res, 'Access denied. Only owners can view this report.');
   }
   next();
 };
@@ -20,7 +18,7 @@ router.get('/daily-sales', verifyToken, requireOwner, async (req, res) => {
   const companyId = req.user.company_id;
   const { from, to } = req.query;
 
-  if (!from || !to) return res.status(400).json({ message: "from and to dates required" });
+  if (!from || !to) return ApiResponse.error(res, 'from and to dates required', 400);
 
   try {
     const [dailyData] = await db.promise().query(`
@@ -39,6 +37,7 @@ router.get('/daily-sales', verifyToken, requireOwner, async (req, res) => {
     const totalRevenue = dailyData.reduce((sum, day) => sum + parseFloat(day.daily_revenue || 0), 0);
     
     res.json({
+      success: true,
       summary: {
         total_revenue: totalRevenue.toFixed(2),
         total_invoices: dailyData.reduce((sum, day) => sum + parseInt(day.invoices), 0),
@@ -48,7 +47,7 @@ router.get('/daily-sales', verifyToken, requireOwner, async (req, res) => {
       daily_data: dailyData
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -73,9 +72,9 @@ router.get('/top-customers', verifyToken, requireOwner, async (req, res) => {
       ORDER BY revenue DESC LIMIT ?
     `, [companyId, parseInt(limit)]);
 
-    res.json({ top_customers: customers });
+    res.json({ success: true, top_customers: customers });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -103,13 +102,11 @@ router.get('/top-products', verifyToken, requireOwner, async (req, res) => {
       LIMIT ?
     `, [companyId, parseInt(limit)]);
 
-    // Calculate estimated profit (assume 15% cost margin if no cost data)
     const productsWithProfit = products.map(p => {
       const revenue = parseFloat(p.revenue || 0);
       const kgSold = parseFloat(p.kg_sold || 0);
       const avgSelling = parseFloat(p.avg_selling_price || 0);
       
-      // Estimate cost as 70% of selling price (typical for seafood business)
       const estimatedCost = avgSelling * 0.70;
       const profit = revenue - (estimatedCost * kgSold);
       const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : 0;
@@ -122,9 +119,9 @@ router.get('/top-products', verifyToken, requireOwner, async (req, res) => {
       };
     });
 
-    res.json({ best_sellers: productsWithProfit });
+    res.json({ success: true, best_sellers: productsWithProfit });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -152,9 +149,9 @@ router.get('/revenue-performance', verifyToken, requireOwner, async (req, res) =
       ORDER BY total_revenue DESC
     `, [companyId, from, to].filter(Boolean));
 
-    res.json({ performance: report });
+    res.json({ success: true, performance: report });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -176,19 +173,17 @@ router.get('/monthly-trends', verifyToken, requireOwner, async (req, res) => {
       GROUP BY month ORDER BY month DESC
     `, [companyId, months]);
 
-    res.json({ trends });
+    res.json({ success: true, trends });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
 /* 6️⃣ INVOICE STATUS - Payment Tracking */
 router.get('/invoice-status', verifyToken, requireOwner, async (req, res) => {
-
   const companyId = req.user.company_id;
 
   try {
-
     const [status] = await db.promise().query(`
       SELECT 
         COUNT(DISTINCT e.id) as total_invoices,
@@ -199,16 +194,15 @@ router.get('/invoice-status', verifyToken, requireOwner, async (req, res) => {
     `, [companyId]);
 
     res.json({
+      success: true,
       collection_status: {
         total_invoices: status[0].total_invoices,
         total_outstanding: status[0].total_outstanding
       }
     });
-
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
-
 });
 
 /* 7️⃣ CUSTOMER LIFETIME VALUE */
@@ -232,9 +226,9 @@ router.get('/customer-ltv', verifyToken, requireOwner, async (req, res) => {
       ORDER BY lifetime_value DESC LIMIT 20
     `, [companyId]);
 
-    res.json({ high_value_customers: ltv });
+    res.json({ success: true, high_value_customers: ltv });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -243,7 +237,6 @@ router.get('/purchase-vs-sales', verifyToken, requireOwner, async (req, res) => 
   const companyId = req.user.company_id;
 
   try {
-    // Get total sales (exports)
     const [salesData] = await db.promise().query(`
       SELECT 
         COALESCE(SUM(ei.total), 0) as total_sales,
@@ -253,7 +246,6 @@ router.get('/purchase-vs-sales', verifyToken, requireOwner, async (req, res) => 
       WHERE e.company_id = ?
     `, [companyId]);
 
-    // Get total purchases
     const [purchaseData] = await db.promise().query(`
       SELECT 
         COALESCE(SUM(pi.total), 0) as total_purchases,
@@ -269,6 +261,7 @@ router.get('/purchase-vs-sales', verifyToken, requireOwner, async (req, res) => 
     const profitMargin = totalSales > 0 ? ((grossProfit / totalSales) * 100).toFixed(1) : 0;
 
     res.json({
+      success: true,
       profit_analysis: {
         total_sales: totalSales.toFixed(2),
         total_purchases: totalPurchases.toFixed(2),
@@ -279,7 +272,7 @@ router.get('/purchase-vs-sales', verifyToken, requireOwner, async (req, res) => 
       }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -307,9 +300,9 @@ router.get('/top-vendors', verifyToken, requireOwner, async (req, res) => {
       LIMIT ?
     `, [companyId, parseInt(limit)]);
 
-    res.json({ top_vendors: vendors });
+    res.json({ success: true, top_vendors: vendors });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -338,10 +331,9 @@ router.get('/price-trends', verifyToken, requireOwner, async (req, res) => {
       ORDER BY i.name, month
     `, [companyId, product_name ? `%${product_name}%` : null].filter(Boolean));
 
-    res.json({ price_trends: trends });
+    res.json({ success: true, price_trends: trends });
   } catch (error) {
-    console.error('Price Trends Error:', error);
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 

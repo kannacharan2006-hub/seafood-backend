@@ -5,13 +5,11 @@ const { paymentValidation } = require('../config/validation');
 const { paymentLimiter } = require('../config/rateLimit');
 const PaymentService = require('../services/paymentService');
 const { wsManager } = require('../config/websocket');
+const ApiResponse = require('../utils/response');
 
 const requireOwner = (req, res, next) => {
   if (req.user.role !== 'OWNER') {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied. Only owners can access payments.'
-    });
+    return ApiResponse.forbidden(res, 'Access denied. Only owners can access payments.');
   }
   next();
 };
@@ -25,45 +23,57 @@ router.post('/customer-payment', paymentLimiter, verifyToken, requireOwner, paym
     wsManager.notifyPayment(req.user.company_id, { type: 'customer_payment', ...result });
     wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'customer_payment_added' });
     
-    res.json(result);
+    ApiResponse.success(res, result, 'Customer payment recorded');
   } catch (error) {
-    res.status(error.message === "Customer not found" ? 404 : 500).json({ message: error.message });
+    if (error.message === "Customer not found") {
+      ApiResponse.notFound(res, error.message);
+    } else {
+      ApiResponse.error(res, error.message);
+    }
   }
 });
 
 router.get('/customer-balance/:id', verifyToken, requireOwner, async (req, res) => {
   try {
     const result = await PaymentService.getCustomerBalance(req.user.company_id, req.params.id);
-    res.json(result);
+    ApiResponse.success(res, result);
   } catch (error) {
-    res.status(error.message === "Customer not found" ? 404 : 500).json({ message: error.message });
+    if (error.message === "Customer not found") {
+      ApiResponse.notFound(res, error.message);
+    } else {
+      ApiResponse.error(res, error.message);
+    }
   }
 });
 
 router.get('/vendor-balance/:id', verifyToken, requireOwner, async (req, res) => {
   try {
     const result = await PaymentService.getVendorBalance(req.user.company_id, req.params.id);
-    res.json(result);
+    ApiResponse.success(res, result);
   } catch (error) {
-    res.status(error.message === "Vendor not found" ? 404 : 500).json({ message: error.message });
+    if (error.message === "Vendor not found") {
+      ApiResponse.notFound(res, error.message);
+    } else {
+      ApiResponse.error(res, error.message);
+    }
   }
 });
 
 router.get('/customer-payment-history/:id', verifyToken, requireOwner, async (req, res) => {
   try {
     const result = await PaymentService.getCustomerPaymentHistory(req.user.company_id, req.params.id);
-    res.json(result);
+    ApiResponse.success(res, result);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
 router.get('/vendor-payment-history/:id', verifyToken, requireOwner, async (req, res) => {
   try {
     const result = await PaymentService.getVendorPaymentHistory(req.user.company_id, req.params.id);
-    res.json(result);
+    ApiResponse.success(res, result);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -76,9 +86,13 @@ router.post('/vendor-payment', paymentLimiter, verifyToken, requireOwner, paymen
     wsManager.notifyPayment(req.user.company_id, { type: 'vendor_payment', ...result });
     wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'vendor_payment_added' });
     
-    res.json(result);
+    ApiResponse.success(res, result, 'Vendor payment recorded');
   } catch (error) {
-    res.status(error.message === "Vendor not found" ? 404 : 500).json({ message: error.message });
+    if (error.message === "Vendor not found") {
+      ApiResponse.notFound(res, error.message);
+    } else {
+      ApiResponse.error(res, error.message);
+    }
   }
 });
 

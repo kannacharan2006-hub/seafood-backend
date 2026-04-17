@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
+const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
   try {
@@ -12,9 +13,9 @@ router.get('/', verifyToken, async (req, res) => {
        JOIN categories c ON i.category_id = c.id
        ORDER BY c.name, i.name, v.variant_name`
     );
-    res.json(rows);
+    ApiResponse.success(res, rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
@@ -28,9 +29,9 @@ router.get('/:itemId', verifyToken, async (req, res) => {
        ORDER BY variant_name`,
       [itemId]
     );
-    res.json(rows);
+    ApiResponse.success(res, rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 

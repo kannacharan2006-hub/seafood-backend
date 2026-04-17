@@ -2,13 +2,11 @@ const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const db = require('../config/db');
+const ApiResponse = require('../utils/response');
 
 const requireOwner = (req, res, next) => {
   if (req.user.role !== 'OWNER') {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied. Only owners can access this data.'
-    });
+    return ApiResponse.forbidden(res, 'Access denied. Only owners can access this data.');
   }
   next();
 };
@@ -19,14 +17,12 @@ router.get('/summary', verifyToken, async (req, res) => {
   const isEmployee = userRole === 'EMPLOYEE';
   const { from, to } = req.query;
 
-  // Validate date params
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if ((from && !dateRegex.test(from)) || (to && !dateRegex.test(to))) {
-    return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    return ApiResponse.error(res, 'Invalid date format. Use YYYY-MM-DD', 400);
   }
 
   try {
-    // Build date filter for payments
     let paymentDateFilter = '';
     let paymentParams = [companyId];
     if (from && to) {
@@ -34,7 +30,6 @@ router.get('/summary', verifyToken, async (req, res) => {
       paymentParams = [companyId, from, to];
     }
 
-    // Build date filter for totals
     let totalDateFilter = '';
     let totalParams = [companyId];
     if (from && to) {
@@ -42,7 +37,6 @@ router.get('/summary', verifyToken, async (req, res) => {
       totalParams = [companyId, from, to];
     }
 
-    // Execute all independent queries in parallel using Promise.all
     const [
       [rawStock],
       [finalStock],
@@ -58,7 +52,6 @@ router.get('/summary', verifyToken, async (req, res) => {
       [topBuyers],
       [topSuppliers]
     ] = await Promise.all([
-      // Stock queries
       db.promise().query(`
         SELECT IFNULL(SUM(rs.available_qty),0) AS total
         FROM raw_stock rs
@@ -71,7 +64,6 @@ router.get('/summary', verifyToken, async (req, res) => {
         WHERE fs.company_id = ?
       `, [companyId]),
 
-      // Today queries
       db.promise().query(`
         SELECT IFNULL(SUM(pi.total),0) AS total
         FROM purchases p
@@ -88,7 +80,6 @@ router.get('/summary', verifyToken, async (req, res) => {
         AND e.date = CURDATE()
       `, [companyId]),
 
-      // Month queries
       db.promise().query(`
         SELECT IFNULL(SUM(pi.total),0) AS total
         FROM purchases p
@@ -105,7 +96,6 @@ router.get('/summary', verifyToken, async (req, res) => {
         AND DATE_FORMAT(e.date,'%Y-%m') = DATE_FORMAT(CURDATE(),'%Y-%m')
       `, [companyId]),
 
-      // Total purchase with optional date filter
       db.promise().query(`
         SELECT IFNULL(SUM(pi.total),0) AS total
         FROM purchases p
@@ -113,7 +103,6 @@ router.get('/summary', verifyToken, async (req, res) => {
         WHERE p.company_id = ? ${totalDateFilter}
       `, totalParams),
 
-      // Total sales with optional date filter
       db.promise().query(`
         SELECT IFNULL(SUM(ei.total),0) AS total
         FROM exports e
@@ -121,21 +110,18 @@ router.get('/summary', verifyToken, async (req, res) => {
         WHERE e.company_id = ? ${totalDateFilter}
       `, totalParams),
 
-      // Vendor payments with optional date filter
       db.promise().query(`
         SELECT IFNULL(SUM(amount),0) AS total
         FROM vendor_payments
         WHERE company_id = ? ${paymentDateFilter}
       `, paymentParams),
 
-      // Customer payments with optional date filter
       db.promise().query(`
         SELECT IFNULL(SUM(amount),0) AS total
         FROM customer_payments
         WHERE company_id = ? ${paymentDateFilter}
       `, paymentParams),
 
-      // Recent activity - fixed UNION with GROUP BY
       db.promise().query(`
         SELECT * FROM (
           SELECT
@@ -189,7 +175,6 @@ router.get('/summary', verifyToken, async (req, res) => {
         LIMIT 5
       `, [companyId, companyId, companyId, companyId]),
 
-      // Top 5 buyers
       db.promise().query(`
         SELECT c.name, IFNULL(SUM(ei.total),0) AS total_sales
         FROM exports e
@@ -201,7 +186,6 @@ router.get('/summary', verifyToken, async (req, res) => {
         LIMIT 5
       `, [companyId]),
 
-      // Top 5 suppliers
       db.promise().query(`
         SELECT v.name, IFNULL(SUM(pi.total),0) AS total_purchase
         FROM purchases p
@@ -215,6 +199,7 @@ router.get('/summary', verifyToken, async (req, res) => {
     ]);
 
     res.json({
+      success: true,
       raw_stock: Number(rawStock[0].total),
       final_stock: Number(finalStock[0].total),
 
@@ -241,7 +226,7 @@ router.get('/summary', verifyToken, async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 

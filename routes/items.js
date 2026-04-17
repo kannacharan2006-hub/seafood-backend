@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const verifyToken = require('../middleware/auth');
+const ApiResponse = require('../utils/response');
 
 router.get('/:categoryId', verifyToken, async (req, res) => {
   try {
@@ -15,9 +16,9 @@ router.get('/:categoryId', verifyToken, async (req, res) => {
       [categoryId]
     );
 
-    res.json(rows);
+    ApiResponse.success(res, rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 

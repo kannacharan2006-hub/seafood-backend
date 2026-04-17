@@ -5,39 +5,8 @@ const verifyToken = require('../middleware/auth');
 const { exportValidation } = require('../config/validation');
 const ExportService = require('../services/exportService');
 const { wsManager } = require('../config/websocket');
+const ApiResponse = require('../utils/response');
 
-/**
- * @swagger
- * /api/exports:
- *   post:
- *     summary: Create a new export/sale
- *     tags: [Exports]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - customer_id
- *               - date
- *               - items
- *             properties:
- *               customer_id:
- *                 type: integer
- *               date:
- *                 type: string
- *                 format: date
- *               items:
- *                 type: array
- *                 items:
- *                   $ref: '#/components/schemas/ExportItem'
- *     responses:
- *       201:
- *         description: Export created successfully
- */
 router.post('/', verifyToken, exportValidation.create, async (req, res) => {
   try {
     const { customer_id, date, items } = req.body;
@@ -52,99 +21,35 @@ router.post('/', verifyToken, exportValidation.create, async (req, res) => {
     wsManager.notifyExport(req.user.company_id, result);
     wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'export_added' });
     
-    res.status(201).json(result);
+    ApiResponse.success(res, result, 'Export created', 201);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    ApiResponse.error(res, error.message, 400);
   }
 });
 
-/**
- * @swagger
- * /api/exports/{id}:
- *   delete:
- *     summary: Delete an export and restore stock
- *     tags: [Exports]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Export deleted and stock restored
- */
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const result = await ExportService.deleteExport(
       req.params.id,
       req.user.company_id
     );
-    res.json(result);
+    ApiResponse.success(res, result, 'Export deleted');
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    ApiResponse.error(res, error.message, 400);
   }
 });
 
-/**
- * @swagger
- * /api/exports:
- *   get:
- *     summary: Get all exports (paginated)
- *     tags: [Exports]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
- *     responses:
- *       200:
- *         description: List of exports with pagination
- */
 router.get('/', verifyToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const result = await ExportService.getExports(req.user.company_id, page, limit);
-    res.json(result);
+    ApiResponse.success(res, result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    ApiResponse.error(res, error.message);
   }
 });
 
-/**
- * @swagger
- * /api/exports/invoice/{id}:
- *   get:
- *     summary: Download invoice PDF
- *     tags: [Exports]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: PDF invoice file
- *         content:
- *           application/pdf:
- *             schema:
- *               type: string
- *               format: binary
- */
 router.get('/invoice/:id', verifyToken, async (req, res) => {
   try {
     const { items, company, grandTotal } = await ExportService.getInvoiceData(
@@ -241,7 +146,7 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
     doc.end();
   } catch (error) {
     console.error('Invoice Error:', error);
-    if (!res.headersSent) res.status(500).json({ message: error.message });
+    if (!res.headersSent) ApiResponse.error(res, error.message);
   }
 });
 
