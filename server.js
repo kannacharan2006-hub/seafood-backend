@@ -24,7 +24,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10kb' })); // Limit request body to 10KB
+app.use(express.urlencoded({ extended: true, limit: '10kb' })); // Limit URL-encoded body
 app.use(requestIdMiddleware);
 app.use(requestLogger);
 
