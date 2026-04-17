@@ -128,7 +128,6 @@ router.post('/reset-password', authLimiter, async (req, res) => {
     const result = await AuthService.resetPassword(email, otp, newPassword);
     ApiResponse.success(res, result, 'Password reset successful!');
   } catch (error) {
-    // Handle specific error cases
     if (error.message.includes('Invalid email or OTP') || 
         error.message.includes('Invalid OTP') || 
         error.message.includes('OTP has expired')) {
@@ -136,6 +135,26 @@ router.post('/reset-password', authLimiter, async (req, res) => {
     } else {
       ApiResponse.error(res, error.message, 500);
     }
+  }
+});
+
+router.post('/refresh-token', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    const result = await AuthService.refreshAccessToken(refreshToken);
+    ApiResponse.success(res, result, 'Token refreshed');
+  } catch (error) {
+    ApiResponse.unauthorized(res, error.message);
+  }
+});
+
+router.post('/logout', verifyToken, async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    await AuthService.logout(req.user.id, refreshToken);
+    ApiResponse.success(res, null, 'Logged out successfully');
+  } catch (error) {
+    ApiResponse.error(res, error.message);
   }
 });
 
