@@ -234,4 +234,54 @@ router.get('/price-trends', verifyToken, requireOwner, async (req, res) => {
   }
 });
 
+/* 1️⃣2️⃣ YESTERDAY'S PROFIT/LOSS */
+router.get('/yesterday-profit', verifyToken, async (req, res) => {
+  const companyId = req.user.company_id;
+
+  try {
+    // Get yesterday's sales
+    const [sales] = await db.promise().query(`
+      SELECT 
+        COALESCE(SUM(ei.total), 0) as total_sales,
+        COALESCE(SUM(ei.quantity), 0) as kg_sold,
+        COUNT(DISTINCT e.id) as invoices
+      FROM exports e 
+      JOIN export_items ei ON e.id = ei.export_id
+      WHERE e.company_id = ? AND e.date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+    `, [companyId]);
+
+    // Get yesterday's purchases
+    const [purchases] = await db.promise().query(`
+      SELECT 
+        COALESCE(SUM(pi.total), 0) as total_purchases,
+        COALESCE(SUM(pi.quantity), 0) as kg_purchased,
+        COUNT(DISTINCT p.id) as orders
+      FROM purchases p 
+      JOIN purchase_items pi ON p.id = pi.purchase_id
+      WHERE p.company_id = ? AND p.date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+    `, [companyId]);
+
+    const yesterdaySales = parseFloat(sales[0]?.total_sales || 0);
+    const yesterdayPurchases = parseFloat(purchases[0]?.total_purchases || 0);
+    const profit = yesterdaySales - yesterdayPurchases;
+    const margin = yesterdaySales > 0 ? ((profit / yesterdaySales) * 100).toFixed(1) : 0;
+
+    res.json({
+      yesterday: {
+        date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+        sales: yesterdaySales.toFixed(2),
+        purchases: yesterdayPurchases.toFixed(2),
+        profit: profit.toFixed(2),
+        margin: margin,
+        kg_sold: sales[0]?.kg_sold || 0,
+        kg_purchased: purchases[0]?.kg_purchased || 0,
+        sales_invoices: sales[0]?.invoices || 0,
+        purchase_orders: purchases[0]?.orders || 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
