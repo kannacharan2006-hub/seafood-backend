@@ -13,7 +13,10 @@ const db = mysql.createPool({
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
     timezone: '+05:30',
-    dateStrings: false
+    dateStrings: false,
+    ssl: {
+        rejectUnauthorized: true
+    }
 });
 
 db.on('connection', (connection) => {
