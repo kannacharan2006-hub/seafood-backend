@@ -42,13 +42,13 @@ router.get('/summary', verifyToken, async (req, res) => {
       Database.getOne(`SELECT IFNULL(SUM(amount),0) AS total FROM customer_payments WHERE company_id = ? ${paymentDateFilter}`, paymentParams),
       Database.getAll(`
         SELECT * FROM (
-          SELECT 'purchases' AS type, v.name AS name, SUM(pi.total) AS amount, p.date AS date
+          SELECT 'purchases' AS type, v.name AS name, SUM(pi.total) AS amount, MAX(p.date) AS date
           FROM purchases p JOIN vendors v ON p.vendor_id = v.id JOIN purchase_items pi ON p.id = pi.purchase_id
-          WHERE p.company_id = ? GROUP BY p.id
+          WHERE p.company_id = ? GROUP BY p.id, v.name
           UNION ALL
-          SELECT 'sales' AS type, c.name AS name, SUM(ei.total) AS amount, e.date AS date
+          SELECT 'sales' AS type, c.name AS name, SUM(ei.total) AS amount, MAX(e.date) AS date
           FROM exports e JOIN customers c ON e.customer_id = c.id JOIN export_items ei ON e.id = ei.export_id
-          WHERE e.company_id = ? GROUP BY e.id
+          WHERE e.company_id = ? GROUP BY e.id, c.name
           UNION ALL
           SELECT 'vendor_payment' AS type, v.name AS name, vp.amount AS amount, vp.date AS date
           FROM vendor_payments vp JOIN vendors v ON vp.vendor_id = v.id WHERE vp.company_id = ?
