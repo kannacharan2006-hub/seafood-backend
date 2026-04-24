@@ -26,6 +26,32 @@ class VendorService {
     );
     return vendors;
   }
+
+  static async updateVendor(vendorId, companyId, name, phone, address) {
+    const [result] = await db.promise().query(
+      `UPDATE vendors SET name = ?, phone = ?, address = ? WHERE id = ? AND company_id = ?`,
+      [name.trim(), phone || null, address || null, vendorId, companyId]
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("Vendor not found");
+    }
+
+    return { message: "Vendor updated successfully" };
+  }
+
+  static async deleteVendor(vendorId, companyId) {
+    const [result] = await db.promise().query(
+      `DELETE FROM vendors WHERE id = ? AND company_id = ?`,
+      [vendorId, companyId]
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("Vendor not found");
+    }
+
+    return { message: "Vendor deleted successfully" };
+  }
 }
 
 module.exports = VendorService;

@@ -28,4 +28,23 @@ router.get('/vendors', verifyToken, async (req, res) => {
   }
 });
 
+router.put('/vendors/:id', verifyToken, async (req, res) => {
+  try {
+    const { name, phone, address } = req.body;
+    const result = await VendorService.updateVendor(req.params.id, req.user.company_id, name, phone, address);
+    ApiResponse.success(res, result, 'Vendor updated');
+  } catch (error) {
+    ApiResponse.error(res, error.message, 400);
+  }
+});
+
+router.delete('/vendors/:id', verifyToken, async (req, res) => {
+  try {
+    const result = await VendorService.deleteVendor(req.params.id, req.user.company_id);
+    ApiResponse.success(res, result, 'Vendor deleted');
+  } catch (error) {
+    ApiResponse.error(res, error.message, 400);
+  }
+});
+
 module.exports = router;

@@ -65,7 +65,7 @@ class PaymentService {
 
   static async getVendorBalance(companyId, vendorId) {
     const [result] = await db.promise().query(`
-      SELECT v.name,
+      SELECT v.name, v.phone,
         IFNULL(SUM(pi.total),0) AS total_purchase,
         IFNULL((SELECT SUM(vp.amount) FROM vendor_payments vp WHERE vp.vendor_id = v.id AND vp.company_id = ?),0) AS total_paid
       FROM vendors v
@@ -83,6 +83,7 @@ class PaymentService {
     return {
       vendor_id: vendorId,
       vendor_name: data.name,
+      vendor_phone: data.phone || '',
       totalPurchase: Number(data.total_purchase),
       totalPaid: Number(data.total_paid),
       balance: Number(data.total_purchase) - Number(data.total_paid)
