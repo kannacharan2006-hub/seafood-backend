@@ -129,6 +129,44 @@ class PurchaseService {
         throw error;
       }
     }
+
+    static async getInvoiceData(purchaseId, companyId) {
+      const purchase = await Database.getOne(
+        `SELECT p.*, v.name AS vendor_name, v.phone AS vendor_phone, v.address AS vendor_address 
+         FROM purchases p 
+         JOIN vendors v ON p.vendor_id = v.id 
+         WHERE p.id = ? AND p.company_id = ?`,
+        [purchaseId, companyId]
+      );
+
+      if (!purchase) {
+        throw new Error("Purchase not found");
+      }
+
+      const items = await Database.getAll(
+        `SELECT pi.*, i.name AS item_name, var.variant_name 
+         FROM purchase_items pi 
+         JOIN variants var ON pi.variant_id = var.id 
+         JOIN items i ON var.item_id = i.id 
+         WHERE pi.purchase_id = ? AND pi.company_id = ?`,
+        [purchaseId, companyId]
+      );
+
+      const company = await Database.getOne(
+        `SELECT name, phone, email FROM companies WHERE id = ?`,
+        [companyId]
+      );
+
+      const vendor = {
+        name: purchase.vendor_name,
+        phone: purchase.vendor_phone,
+        address: purchase.vendor_address
+      };
+
+      const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
+
+      return { items, company, vendor, grandTotal, purchaseDate: purchase.date };
+    }
 }
 
 module.exports = PurchaseService;
