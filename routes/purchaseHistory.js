@@ -18,6 +18,7 @@ router.get('/', verifyToken, async (req, res) => {
       SELECT
         p.id AS purchase_id,
         p.date,
+        p.created_at,
         p.total_amount,
         p.payment_status,
         p.payment_mode,
@@ -29,7 +30,7 @@ router.get('/', verifyToken, async (req, res) => {
       JOIN vendors ven ON p.vendor_id = ven.id
       JOIN users u ON p.created_by = u.id
       WHERE p.company_id = ?
-      ORDER BY p.date DESC, p.id DESC
+      ORDER BY p.created_at DESC, p.id DESC
       LIMIT ? OFFSET ?
     `, [companyId, limit, offset]);
 
@@ -51,6 +52,7 @@ router.get('/:id', verifyToken, async (req, res) => {
       SELECT
         p.id AS purchase_id,
         p.date,
+        p.created_at,
         p.total_amount,
         p.payment_status,
         p.payment_mode,
@@ -101,6 +103,7 @@ router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
       SELECT
         p.id AS purchase_id,
         p.date,
+        p.created_at,
         p.total_amount,
         p.payment_status,
         p.payment_mode,
@@ -112,7 +115,7 @@ router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
       JOIN vendors ven ON p.vendor_id = ven.id
       JOIN users u ON p.created_by = u.id
       WHERE p.vendor_id = ? AND p.company_id = ?
-      ORDER BY p.date DESC, p.id DESC
+      ORDER BY p.created_at DESC, p.id DESC
     `, [vendorId, companyId]);
 
     ApiResponse.success(res, results);
