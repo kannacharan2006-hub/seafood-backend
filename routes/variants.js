@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Database = require('../config/database');
 const verifyToken = require('../middleware/auth');
-const { commonValidations } = require('../config/validation');
 const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
@@ -21,7 +20,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/:itemId', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.get('/:itemId', verifyToken, async (req, res) => {
   try {
     const rows = await Database.getAll(`
       SELECT id, variant_name FROM variants WHERE item_id = ? AND company_id = ? ORDER BY variant_name
