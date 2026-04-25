@@ -239,6 +239,13 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
   const companyId = req.user.company_id;
 
   try {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yyyy = yesterday.getFullYear();
+    const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const dd = String(yesterday.getDate()).padStart(2, '0');
+    const yesterdayDateStr = `${yyyy}-${mm}-${dd}`;
+
     const [sales] = await db.promise().query(`
       SELECT 
         COALESCE(SUM(ei.total), 0) as total_sales,
@@ -246,8 +253,8 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
         COUNT(DISTINCT e.id) as invoices
       FROM exports e 
       JOIN export_items ei ON e.id = ei.export_id
-      WHERE e.company_id = ? AND e.date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
-    `, [companyId]);
+      WHERE e.company_id = ? AND DATE(e.date) = ?
+    `, [companyId, yesterdayDateStr]);
 
     const [purchases] = await db.promise().query(`
       SELECT 
@@ -256,12 +263,8 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
         COUNT(DISTINCT p.id) as orders
       FROM purchases p 
       JOIN purchase_items pi ON p.id = pi.purchase_id
-      WHERE p.company_id = ? AND p.date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
-    `, [companyId]);
-
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+      WHERE p.company_id = ? AND DATE(p.date) = ?
+    `, [companyId, yesterdayDateStr]);
 
     const yesterdaySales = parseFloat(sales[0]?.total_sales || 0);
     const yesterdayPurchases = parseFloat(purchases[0]?.total_purchases || 0);
@@ -270,7 +273,7 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
 
     res.json({
       yesterday: {
-        date: yesterdayStr,
+        date: yesterdayDateStr,
         sales: yesterdaySales.toFixed(2),
         purchases: yesterdayPurchases.toFixed(2),
         profit: profit.toFixed(2),
