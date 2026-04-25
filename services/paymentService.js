@@ -30,8 +30,8 @@ class PaymentService {
     }
 
     await db.promise().query(`
-      INSERT INTO vendor_payments (vendor_id, amount, date, company_id)
-      VALUES (?, ?, CURDATE(), ?)
+      INSERT INTO vendor_payments (vendor_id, amount, date, time, company_id)
+      VALUES (?, ?, CURDATE(), CURTIME(), ?)
     `, [vendor_id, amount, companyId]);
 
     return { message: "Vendor payment recorded successfully" };
