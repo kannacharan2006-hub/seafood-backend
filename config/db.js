@@ -12,7 +12,7 @@ const db = mysql.createPool({
     idleTimeout: 60000,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
-    timezone: '+05:30',
+    timezone: 'Asia/Kolkata',
     dateStrings: false,
     ssl: {
         rejectUnauthorized: true
@@ -21,6 +21,7 @@ const db = mysql.createPool({
 
 db.on('connection', (connection) => {
     console.log(`[DB] New connection established: ${connection.threadId}`);
+    connection.query(`SET time_zone = '+05:30'`);
 });
 
 db.on('release', (connection) => {
