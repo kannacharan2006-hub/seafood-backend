@@ -138,12 +138,12 @@ class ExportService {
     const totalItems = totalResult[0].total;
 
     const [exports] = await db.promise().query(`
-      SELECT e.id, e.invoice_no, e.date, c.name AS customer_name, u.name AS created_by
+      SELECT e.id, e.invoice_no, e.date, e.created_at, c.name AS customer_name, u.name AS created_by
       FROM exports e
       LEFT JOIN customers c ON e.customer_id = c.id
       LEFT JOIN users u ON e.created_by = u.id
       WHERE e.company_id = ?
-      ORDER BY e.date DESC, e.id DESC
+      ORDER BY e.created_at DESC, e.id DESC
       LIMIT ? OFFSET ?
     `, [companyId, limit, offset]);
 
@@ -176,7 +176,7 @@ class ExportService {
 
   static async getInvoiceData(exportId, companyId) {
     const [items] = await db.promise().query(`
-      SELECT e.invoice_no, e.date, c.name AS customer_name, c.address AS customer_address, 
+      SELECT e.invoice_no, e.date, e.created_at, c.name AS customer_name, c.address AS customer_address, 
              c.phone AS customer_phone, i.name AS item_name, v.variant_name, 
              ei.quantity, ei.price_per_kg, ei.total
       FROM exports e JOIN export_items ei ON e.id = ei.export_id
