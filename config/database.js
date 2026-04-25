@@ -1,6 +1,63 @@
 const db = require('./db');
 const logger = require('./logger');
 
+const ALLOWED_TABLES = [
+  'users', 'companies', 'categories', 'items', 'variants',
+  'vendors', 'customers', 'purchases', 'purchase_items',
+  'exports', 'export_items', 'conversions', 'conversion_inputs', 'conversion_outputs',
+  'raw_stock', 'final_stock', 'customer_payments', 'vendor_payments'
+];
+
+const ALLOWED_COLUMNS = {
+  users: ['id', 'name', 'email', 'password_hash', 'phone', 'role', 'company_id', 'created_at'],
+  companies: ['id', 'name', 'email', 'phone', 'address', 'created_at'],
+  categories: ['id', 'name', 'company_id', 'created_at'],
+  items: ['id', 'name', 'category_id', 'company_id', 'created_at'],
+  variants: ['id', 'item_id', 'variant_name', 'company_id', 'created_at'],
+  vendors: ['id', 'name', 'phone', 'address', 'company_id', 'created_at'],
+  customers: ['id', 'name', 'phone', 'address', 'company_id', 'created_at'],
+  purchases: ['id', 'vendor_id', 'date', 'total_amount', 'created_by', 'company_id', 'created_at', 'payment_status', 'payment_mode', 'payment_phone', 'payment_date', 'payment_reference', 'payment_notes', 'supplier_type'],
+  purchase_items: ['id', 'purchase_id', 'variant_id', 'quantity', 'price_per_kg', 'total', 'company_id', 'created_at'],
+  exports: ['id', 'customer_id', 'date', 'total_amount', 'created_by', 'company_id', 'created_at'],
+  export_items: ['id', 'export_id', 'variant_id', 'quantity', 'price_per_kg', 'total', 'company_id', 'created_at'],
+  conversions: ['id', 'date', 'notes', 'created_by', 'company_id', 'created_at', 'total_input', 'total_output', 'gain_loss'],
+  conversion_inputs: ['id', 'conversion_id', 'variant_id', 'quantity', 'company_id', 'created_at'],
+  conversion_outputs: ['id', 'conversion_id', 'variant_id', 'quantity', 'company_id', 'created_at'],
+  raw_stock: ['id', 'variant_id', 'available_qty', 'company_id', 'created_at'],
+  final_stock: ['id', 'variant_id', 'available_qty', 'company_id', 'created_at'],
+  customer_payments: ['id', 'customer_id', 'amount', 'payment_mode', 'payment_reference', 'payment_date', 'company_id', 'created_at'],
+  vendor_payments: ['id', 'vendor_id', 'amount', 'payment_mode', 'payment_reference', 'payment_date', 'company_id', 'created_at']
+};
+
+const identifierRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+function validateTable(table) {
+  if (!ALLOWED_TABLES.includes(table)) {
+    throw new Error(`Invalid table name: ${table}`);
+  }
+  return true;
+}
+
+function validateColumns(table, columns) {
+  const allowed = ALLOWED_COLUMNS[table];
+  if (!allowed) {
+    throw new Error(`Unknown table: ${table}`);
+  }
+  for (const col of columns) {
+    if (!allowed.includes(col)) {
+      throw new Error(`Invalid column '${col}' for table '${table}'`);
+    }
+  }
+  return true;
+}
+
+function validateIdentifier(identifier) {
+  if (!identifierRegex.test(identifier)) {
+    throw new Error(`Invalid identifier: ${identifier}`);
+  }
+  return true;
+}
+
 class Database {
   static async query(query, params = []) {
     return new Promise((resolve, reject) => {
@@ -34,7 +91,9 @@ class Database {
   }
 
   static async insert(table, data) {
+    validateTable(table);
     const keys = Object.keys(data);
+    validateColumns(table, keys);
     const values = Object.values(data);
     const placeholders = keys.map(() => '?').join(', ');
     const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`;
@@ -43,6 +102,10 @@ class Database {
   }
 
   static async update(table, data, where, whereParams = []) {
+    validateTable(table);
+    const keys = Object.keys(data);
+    validateColumns(table, keys);
+    if (where) validateIdentifier(where.split('=')[0].trim());
     const setClause = Object.keys(data).map(key => `${key} = ?`).join(', ');
     const values = [...Object.values(data), ...whereParams];
     const query = `UPDATE ${table} SET ${setClause} WHERE ${where}`;
@@ -51,12 +114,16 @@ class Database {
   }
 
   static async delete(table, where, params = []) {
+    validateTable(table);
+    if (where && where !== '1=1') validateIdentifier(where.split('=')[0].trim());
     const query = `DELETE FROM ${table} WHERE ${where}`;
     const [result] = await db.promise().query(query, params);
     return result;
   }
 
   static async count(table, where = '1=1', params = []) {
+    validateTable(table);
+    if (where && where !== '1=1') validateIdentifier(where.split('=')[0].trim());
     const query = `SELECT COUNT(*) as count FROM ${table} WHERE ${where}`;
     const result = await this.getOne(query, params);
     return result ? result.count : 0;
