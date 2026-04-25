@@ -240,6 +240,9 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
 
   try {
     const now = new Date();
+    now.setHours(now.getHours() + 5);
+    now.setMinutes(now.getMinutes() + 30);
+    
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     
