@@ -34,18 +34,22 @@ const identifierRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 function validateTable(table) {
   if (!ALLOWED_TABLES.includes(table)) {
+    logger.warn(`Invalid table access attempt: ${table}`);
     throw new Error(`Invalid table name: ${table}`);
   }
   return true;
 }
 
+const _validateColumns = validateColumns;
+
 function validateColumns(table, columns) {
-  const allowed = ALLOWED_COLUMNS[table];
-  if (!allowed) {
+  if (!ALLOWED_COLUMNS[table]) {
+    logger.warn(`Unknown table in column validation: ${table}`);
     throw new Error(`Unknown table: ${table}`);
   }
   for (const col of columns) {
-    if (!allowed.includes(col)) {
+    if (!ALLOWED_COLUMNS[table].includes(col)) {
+      logger.warn(`Invalid column '${col}' for table '${table}'`);
       throw new Error(`Invalid column '${col}' for table '${table}'`);
     }
   }
