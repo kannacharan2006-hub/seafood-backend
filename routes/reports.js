@@ -246,9 +246,7 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
     const dd = String(yesterday.getDate()).padStart(2, '0');
     const yesterdayDateStr = `${yyyy}-${mm}-${dd}`;
 
-    console.log('Yesterday date:', yesterdayDateStr);
-
-    const [sales] = await db.promise().query(`
+    const sales = await Database.getAll(`
       SELECT 
         COALESCE(SUM(ei.total), 0) as total_sales,
         COALESCE(SUM(ei.quantity), 0) as kg_sold,
@@ -258,7 +256,7 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
       WHERE e.company_id = ? AND DATE(e.date) = ?
     `, [companyId, yesterdayDateStr]);
 
-    const [purchases] = await db.promise().query(`
+    const purchases = await Database.getAll(`
       SELECT 
         COALESCE(SUM(pi.total), 0) as total_purchases,
         COALESCE(SUM(pi.quantity), 0) as kg_purchased,
@@ -267,9 +265,6 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
       JOIN purchase_items pi ON p.id = pi.purchase_id
       WHERE p.company_id = ? AND DATE(p.date) = ?
     `, [companyId, yesterdayDateStr]);
-
-    console.log('Sales result:', sales);
-    console.log('Purchases result:', purchases);
 
     const yesterdaySales = parseFloat(sales[0]?.total_sales || 0);
     const yesterdayPurchases = parseFloat(purchases[0]?.total_purchases || 0);
