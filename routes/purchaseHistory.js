@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Database = require('../config/database');
 const verifyToken = require('../middleware/auth');
-const { commonValidations } = require('../config/validation');
 const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
@@ -44,7 +43,37 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
+  const companyId = req.user.company_id;
+  const vendorId = req.params.vendorId;
+
+  try {
+    const results = await Database.getAll(`
+      SELECT
+        p.id AS purchase_id,
+        p.date,
+        p.created_at,
+        p.total_amount,
+        p.payment_status,
+        p.payment_mode,
+        p.payment_phone,
+        p.payment_date,
+        ven.name AS vendor_name,
+        u.name AS created_by
+      FROM purchases p
+      JOIN vendors ven ON p.vendor_id = ven.id
+      JOIN users u ON p.created_by = u.id
+      WHERE p.vendor_id = ? AND p.company_id = ?
+      ORDER BY p.created_at DESC, p.id DESC
+    `, [vendorId, companyId]);
+
+    ApiResponse.success(res, results);
+  } catch (error) {
+    ApiResponse.error(res, error.message);
+  }
+});
+
+router.get('/:id', verifyToken, async (req, res) => {
   const companyId = req.user.company_id;
   const purchaseId = req.params.id;
 
