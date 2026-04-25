@@ -246,6 +246,8 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
     const dd = String(yesterday.getDate()).padStart(2, '0');
     const yesterdayDateStr = `${yyyy}-${mm}-${dd}`;
 
+    console.log('Yesterday date:', yesterdayDateStr);
+
     const [sales] = await db.promise().query(`
       SELECT 
         COALESCE(SUM(ei.total), 0) as total_sales,
@@ -266,6 +268,9 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
       WHERE p.company_id = ? AND DATE(p.date) = ?
     `, [companyId, yesterdayDateStr]);
 
+    console.log('Sales result:', sales);
+    console.log('Purchases result:', purchases);
+
     const yesterdaySales = parseFloat(sales[0]?.total_sales || 0);
     const yesterdayPurchases = parseFloat(purchases[0]?.total_purchases || 0);
     const profit = yesterdaySales - yesterdayPurchases;
@@ -285,6 +290,7 @@ router.get('/yesterday-profit', verifyToken, async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Yesterday profit error:', error);
     res.status(500).json({ error: error.message });
   }
 });
