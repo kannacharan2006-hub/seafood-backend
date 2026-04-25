@@ -5,7 +5,7 @@ const ALLOWED_TABLES = [
   'users', 'companies', 'categories', 'items', 'variants',
   'vendors', 'customers', 'purchases', 'purchase_items',
   'exports', 'export_items', 'conversions', 'conversion_inputs', 'conversion_outputs',
-  'raw_stock', 'final_stock', 'customer_payments', 'vendor_payments'
+  'raw_stock', 'final_stock', 'customer_payments', 'vendor_payments', 'refresh_tokens'
 ];
 
 const ALLOWED_COLUMNS = {
@@ -26,7 +26,8 @@ const ALLOWED_COLUMNS = {
   raw_stock: ['id', 'variant_id', 'available_qty', 'company_id', 'created_at'],
   final_stock: ['id', 'variant_id', 'available_qty', 'company_id', 'created_at'],
   customer_payments: ['id', 'customer_id', 'amount', 'payment_mode', 'payment_reference', 'payment_date', 'company_id', 'created_at'],
-  vendor_payments: ['id', 'vendor_id', 'amount', 'payment_mode', 'payment_reference', 'payment_date', 'company_id', 'created_at']
+  vendor_payments: ['id', 'vendor_id', 'amount', 'payment_mode', 'payment_reference', 'payment_date', 'company_id', 'created_at'],
+  refresh_tokens: ['id', 'user_id', 'token_hash', 'expires_at', 'created_at']
 };
 
 const identifierRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
