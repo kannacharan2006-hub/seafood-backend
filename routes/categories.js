@@ -6,7 +6,7 @@ const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const rows = await Database.getAll('SELECT id, name FROM categories WHERE company_id = ? ORDER BY name', [req.user.company_id]);
+    const rows = await Database.getAll('SELECT id, name FROM categories ORDER BY name');
     ApiResponse.success(res, rows);
   } catch (error) {
     ApiResponse.error(res, error.message);
