@@ -13,9 +13,9 @@ router.post('/', verifyToken, purchaseValidation.create, async (req, res) => {
       return ApiResponse.forbidden(res, 'Access denied');
     }
 
-    const { vendor_id, supplier_type, date, items } = req.body;
+    const { vendor_id, supplier_type, date, items, payment_mode, payment_phone } = req.body;
     const result = await PurchaseService.createPurchase(
-      req.user.id, req.user.company_id, vendor_id, supplier_type, date, items
+      req.user.id, req.user.company_id, vendor_id, supplier_type, date, items, payment_mode, payment_phone
     );
     
     wsManager.notifyPurchase(req.user.company_id, result);
@@ -35,6 +35,26 @@ router.delete('/:id', verifyToken, async (req, res) => {
 
     const result = await PurchaseService.deletePurchase(req.params.id, req.user.company_id);
     ApiResponse.success(res, result, 'Purchase deleted');
+  } catch (error) {
+    ApiResponse.error(res, error.message, 400);
+  }
+});
+
+router.put('/:id/payment', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'OWNER') {
+      return ApiResponse.forbidden(res, 'Only Owner can update payment');
+    }
+
+    const { payment_status, payment_mode, payment_phone, payment_reference, payment_notes } = req.body;
+    const result = await PurchaseService.updatePayment(
+      req.params.id, req.user.company_id, 
+      payment_status, payment_mode, payment_phone, payment_reference, payment_notes
+    );
+    
+    wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'payment_updated' });
+    
+    ApiResponse.success(res, result, 'Payment updated');
   } catch (error) {
     ApiResponse.error(res, error.message, 400);
   }

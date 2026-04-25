@@ -2,7 +2,7 @@ const Database = require('../config/database');
 const { wsManager } = require('../config/websocket');
 
 class PurchaseService {
-    static async createPurchase(userId, companyId, vendor_id, supplier_type, date, items) {
+    static async createPurchase(userId, companyId, vendor_id, supplier_type, date, items, payment_mode = 'NONE', payment_phone = null) {
       const connection = await Database.beginTransaction();
       
       try {
@@ -18,8 +18,8 @@ class PurchaseService {
 
         // Insert purchase header
         const purchaseResult = await Database.execute(
-          `INSERT INTO purchases (vendor_id, supplier_type, date, created_by, company_id, total_amount) VALUES (?, ?, ?, ?, ?, 0)`,
-          [vendor_id, supplier_type || null, date, userId, companyId]
+          `INSERT INTO purchases (vendor_id, supplier_type, date, created_by, company_id, total_amount, payment_mode, payment_phone, payment_status) VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'PENDING')`,
+          [vendor_id, supplier_type || null, date, userId, companyId, payment_mode, payment_phone]
         );
 
         const purchaseId = purchaseResult.insertId;
@@ -166,6 +166,53 @@ class PurchaseService {
       const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
 
       return { items, company, vendor, grandTotal, purchaseDate: purchase.date };
+    }
+
+    static async updatePayment(purchaseId, companyId, payment_status, payment_mode, payment_phone, payment_reference, payment_notes) {
+      const purchaseCheck = await Database.execute(
+        `SELECT id FROM purchases WHERE id = ? AND company_id = ?`,
+        [purchaseId, companyId]
+      );
+
+      if (purchaseCheck.length === 0) {
+        throw new Error("Purchase not found");
+      }
+
+      const updateFields = [];
+      const updateValues = [];
+
+      if (payment_status) {
+        updateFields.push('payment_status = ?');
+        updateValues.push(payment_status);
+        if (payment_status === 'PAID') {
+          updateFields.push('payment_date = CURDATE()');
+        }
+      }
+      if (payment_mode) {
+        updateFields.push('payment_mode = ?');
+        updateValues.push(payment_mode);
+      }
+      if (payment_phone !== undefined) {
+        updateFields.push('payment_phone = ?');
+        updateValues.push(payment_phone);
+      }
+      if (payment_reference) {
+        updateFields.push('payment_reference = ?');
+        updateValues.push(payment_reference);
+      }
+      if (payment_notes) {
+        updateFields.push('payment_notes = ?');
+        updateValues.push(payment_notes);
+      }
+
+      updateValues.push(purchaseId, companyId);
+
+      await Database.execute(
+        `UPDATE purchases SET ${updateFields.join(', ')} WHERE id = ? AND company_id = ?`,
+        updateValues
+      );
+
+      return { message: "Payment updated successfully" };
     }
 }
 

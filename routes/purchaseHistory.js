@@ -19,6 +19,10 @@ router.get('/', verifyToken, async (req, res) => {
         p.id AS purchase_id,
         p.date,
         p.total_amount,
+        p.payment_status,
+        p.payment_mode,
+        p.payment_phone,
+        p.payment_date,
         ven.name AS vendor_name,
         u.name AS created_by
       FROM purchases p
@@ -48,7 +52,14 @@ router.get('/:id', verifyToken, async (req, res) => {
         p.id AS purchase_id,
         p.date,
         p.total_amount,
+        p.payment_status,
+        p.payment_mode,
+        p.payment_phone,
+        p.payment_date,
+        p.payment_reference,
+        p.payment_notes,
         ven.name AS vendor_name,
+        ven.phone AS vendor_phone,
         u.name AS created_by
       FROM purchases p
       JOIN vendors ven ON p.vendor_id = ven.id
@@ -80,3 +91,32 @@ router.get('/:id', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+
+router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
+  const companyId = req.user.company_id;
+  const vendorId = req.params.vendorId;
+
+  try {
+    const results = await Database.getAll(`
+      SELECT
+        p.id AS purchase_id,
+        p.date,
+        p.total_amount,
+        p.payment_status,
+        p.payment_mode,
+        p.payment_phone,
+        p.payment_date,
+        ven.name AS vendor_name,
+        u.name AS created_by
+      FROM purchases p
+      JOIN vendors ven ON p.vendor_id = ven.id
+      JOIN users u ON p.created_by = u.id
+      WHERE p.vendor_id = ? AND p.company_id = ?
+      ORDER BY p.date DESC, p.id DESC
+    `, [vendorId, companyId]);
+
+    ApiResponse.success(res, results);
+  } catch (error) {
+    ApiResponse.error(res, error.message);
+  }
+});
