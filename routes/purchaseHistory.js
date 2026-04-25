@@ -122,7 +122,7 @@ router.get('/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/vendor/:vendorId', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
   const companyId = req.user.company_id;
   const vendorId = req.params.vendorId;
 
