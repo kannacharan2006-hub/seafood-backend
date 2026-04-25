@@ -12,7 +12,7 @@ const db = mysql.createPool({
     idleTimeout: 60000,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
-    timezone: 'Asia/Kolkata',
+    timezone: '+05:30',
     dateStrings: false,
     ssl: {
         rejectUnauthorized: true

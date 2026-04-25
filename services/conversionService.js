@@ -8,10 +8,14 @@ class ConversionService {
     try {
       await connection.beginTransaction();
 
-      const [conversionResult] = await connection.query(
-        `INSERT INTO conversion (date, notes, created_by, company_id) VALUES (?, ?, ?, ?)`,
-        [date, notes || null, userId, companyId]
-      );
+      const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(now.getTime() + istOffset);
+
+    const [conversionResult] = await connection.query(
+      `INSERT INTO conversion (date, notes, created_by, company_id, created_at) VALUES (?, ?, ?, ?, ?)`,
+      [date, notes || null, userId, companyId, istTime]
+    );
       const conversionId = conversionResult.insertId;
 
       for (const item of raw_items) {
@@ -158,7 +162,7 @@ class ConversionService {
     const totalPages = Math.ceil(totalItems / limit);
 
     const [conversions] = await db.promise().query(
-      `SELECT c.id, c.date, c.notes, u.name AS created_by FROM conversion c JOIN users u ON c.created_by = u.id WHERE c.company_id = ? ORDER BY c.date DESC, c.id DESC LIMIT ? OFFSET ?`,
+      `SELECT c.id, c.date, c.created_at, c.notes, u.name AS created_by FROM conversion c JOIN users u ON c.created_by = u.id WHERE c.company_id = ? ORDER BY c.created_at DESC, c.id DESC LIMIT ? OFFSET ?`,
       [companyId, limit, offset]
     );
 
