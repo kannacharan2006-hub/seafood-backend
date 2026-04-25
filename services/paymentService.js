@@ -66,10 +66,8 @@ class PaymentService {
   static async getVendorBalance(companyId, vendorId) {
     const [result] = await db.promise().query(`
       SELECT v.name, v.phone,
-        IFNULL(SUM(CASE WHEN pi.purchase_id IS NOT NULL THEN pi.total ELSE 0 END),0) AS total_purchase,
-        IFNULL((SELECT SUM(pi.total) FROM purchase_items pi 
-          JOIN purchases p ON pi.purchase_id = p.id 
-          WHERE p.vendor_id = v.id AND p.company_id = ? AND p.payment_status = 'PAID'),0) AS total_paid
+        IFNULL(SUM(pi.total),0) AS total_purchase,
+        IFNULL((SELECT SUM(vp.amount) FROM vendor_payments vp WHERE vp.vendor_id = v.id AND vp.company_id = ?),0) AS total_paid
       FROM vendors v
       LEFT JOIN purchases p ON p.vendor_id = v.id AND p.company_id = ?
       LEFT JOIN purchase_items pi ON pi.purchase_id = p.id
