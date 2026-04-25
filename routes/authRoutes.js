@@ -138,7 +138,7 @@ router.post('/reset-password', authLimiter, async (req, res) => {
   }
 });
 
-router.post('/refresh-token', async (req, res) => {
+router.post('/refresh-token', authLimiter, async (req, res) => {
   try {
     const { refreshToken } = req.body;
     const result = await AuthService.refreshAccessToken(refreshToken);
