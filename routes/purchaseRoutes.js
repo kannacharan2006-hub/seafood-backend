@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const PDFDocument = require('pdfkit');
 const verifyToken = require('../middleware/auth');
-const { purchaseValidation } = require('../config/validation');
+const { purchaseValidation, commonValidations } = require('../config/validation');
 const PurchaseService = require('../services/purchaseService');
 const { wsManager } = require('../config/websocket');
 const ApiResponse = require('../utils/response');
@@ -27,7 +27,7 @@ router.post('/', verifyToken, purchaseValidation.create, async (req, res) => {
   }
 });
 
-router.delete('/:id', verifyToken, async (req, res) => {
+router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
   try {
     if (req.user.role !== 'OWNER') {
       return ApiResponse.forbidden(res, 'Only Owner can delete purchase');
@@ -40,7 +40,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.put('/:id/payment', verifyToken, async (req, res) => {
+router.put('/:id/payment', verifyToken, commonValidations.idValidation, async (req, res) => {
   try {
     if (req.user.role !== 'OWNER') {
       return ApiResponse.forbidden(res, 'Only Owner can update payment');

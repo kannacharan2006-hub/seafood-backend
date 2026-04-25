@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Database = require('../config/database');
 const verifyToken = require('../middleware/auth');
+const { commonValidations } = require('../config/validation');
 const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
@@ -43,7 +44,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/:id', verifyToken, async (req, res) => {
+router.get('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
   const companyId = req.user.company_id;
   const purchaseId = req.params.id;
 
@@ -92,9 +93,7 @@ router.get('/:id', verifyToken, async (req, res) => {
   }
 });
 
-module.exports = router;
-
-router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
+router.get('/vendor/:vendorId', verifyToken, commonValidations.idValidation, async (req, res) => {
   const companyId = req.user.company_id;
   const vendorId = req.params.vendorId;
 
@@ -123,3 +122,5 @@ router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
     ApiResponse.error(res, error.message);
   }
 });
+
+module.exports = router;

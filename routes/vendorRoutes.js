@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
-const { vendorValidation } = require('../config/validation');
+const { vendorValidation, commonValidations } = require('../config/validation');
 const VendorService = require('../services/vendorService');
 const ApiResponse = require('../utils/response');
 
@@ -28,7 +28,7 @@ router.get('/vendors', verifyToken, async (req, res) => {
   }
 });
 
-router.put('/vendors/:id', verifyToken, async (req, res) => {
+router.put('/vendors/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
   try {
     const { name, phone, address } = req.body;
     const result = await VendorService.updateVendor(req.params.id, req.user.company_id, name, phone, address);
@@ -38,7 +38,7 @@ router.put('/vendors/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.delete('/vendors/:id', verifyToken, async (req, res) => {
+router.delete('/vendors/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
   try {
     const result = await VendorService.deleteVendor(req.params.id, req.user.company_id);
     ApiResponse.success(res, result, 'Vendor deleted');

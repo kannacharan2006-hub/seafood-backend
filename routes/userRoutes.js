@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const Database = require('../config/database');
 const verifyToken = require('../middleware/auth');
+const { commonValidations } = require('../config/validation');
 const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
@@ -41,7 +42,7 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
-router.delete('/:id', verifyToken, async (req, res) => {
+router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
   if (req.user.role !== 'OWNER') {
     return ApiResponse.forbidden(res, 'Access denied');
   }
@@ -53,7 +54,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.put('/:id', verifyToken, async (req, res) => {
+router.put('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
   if (req.user.role !== 'OWNER') {
     return ApiResponse.forbidden(res, 'Access denied');
   }

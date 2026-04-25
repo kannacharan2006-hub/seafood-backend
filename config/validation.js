@@ -15,6 +15,19 @@ const validate = (req, res, next) => {
   next();
 };
 
+const idValidation = [
+  param('id').isInt({ min: 1 }).withMessage('Valid ID is required'),
+  validate
+];
+
+const commonValidations = {
+  idValidation,
+  sanitizeId: [
+    param('id').toInt(),
+    validate
+  ]
+};
+
 const authValidation = {
   login: [
     body('email_or_phone').notEmpty().withMessage('Email or phone number is required'),
@@ -148,5 +161,6 @@ module.exports = {
   paymentValidation,
   categoryValidation,
   itemValidation,
-  variantValidation
+  variantValidation,
+  commonValidations
 };

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
-const { paymentValidation } = require('../config/validation');
+const { paymentValidation, commonValidations } = require('../config/validation');
 const { paymentLimiter } = require('../config/rateLimit');
 const PaymentService = require('../services/paymentService');
 const { wsManager } = require('../config/websocket');
@@ -33,7 +33,7 @@ router.post('/customer-payment', paymentLimiter, verifyToken, requireOwner, paym
   }
 });
 
-router.get('/customer-balance/:id', verifyToken, requireOwner, async (req, res) => {
+router.get('/customer-balance/:id', verifyToken, requireOwner, commonValidations.idValidation, async (req, res) => {
   try {
     const result = await PaymentService.getCustomerBalance(req.user.company_id, req.params.id);
     ApiResponse.success(res, result);
@@ -46,7 +46,7 @@ router.get('/customer-balance/:id', verifyToken, requireOwner, async (req, res) 
   }
 });
 
-router.get('/vendor-balance/:id', verifyToken, requireOwner, async (req, res) => {
+router.get('/vendor-balance/:id', verifyToken, requireOwner, commonValidations.idValidation, async (req, res) => {
   try {
     const result = await PaymentService.getVendorBalance(req.user.company_id, req.params.id);
     ApiResponse.success(res, result);
@@ -59,7 +59,7 @@ router.get('/vendor-balance/:id', verifyToken, requireOwner, async (req, res) =>
   }
 });
 
-router.get('/customer-payment-history/:id', verifyToken, requireOwner, async (req, res) => {
+router.get('/customer-payment-history/:id', verifyToken, requireOwner, commonValidations.idValidation, async (req, res) => {
   try {
     const result = await PaymentService.getCustomerPaymentHistory(req.user.company_id, req.params.id);
     ApiResponse.success(res, result);
@@ -68,7 +68,7 @@ router.get('/customer-payment-history/:id', verifyToken, requireOwner, async (re
   }
 });
 
-router.get('/vendor-payment-history/:id', verifyToken, requireOwner, async (req, res) => {
+router.get('/vendor-payment-history/:id', verifyToken, requireOwner, commonValidations.idValidation, async (req, res) => {
   try {
     const result = await PaymentService.getVendorPaymentHistory(req.user.company_id, req.params.id);
     ApiResponse.success(res, result);
