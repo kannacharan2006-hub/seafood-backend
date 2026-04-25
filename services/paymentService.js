@@ -101,9 +101,9 @@ class PaymentService {
 
   static async getVendorPaymentHistory(companyId, vendorId) {
     const [rows] = await db.promise().query(`
-      SELECT amount, date FROM vendor_payments
+      SELECT amount, date, time, notes FROM vendor_payments
       WHERE vendor_id = ? AND company_id = ?
-      ORDER BY date DESC
+      ORDER BY date DESC, time DESC
     `, [vendorId, companyId]);
     return rows;
   }
