@@ -65,7 +65,7 @@ router.put('/:id', verifyToken, async (req, res) => {
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (Number.isNaN(id)) {
+    if (id <= 0) {
       return ApiResponse.error(res, 'Invalid item ID', 400);
     }
     await Database.delete('items', 'id = ? AND company_id = ?', [id, req.user.company_id]);
