@@ -20,12 +20,59 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-router.get('/:itemId', verifyToken, async (req, res) => {
+router.get('/by-item/:itemId', verifyToken, async (req, res) => {
   try {
     const rows = await Database.getAll(`
       SELECT id, variant_name FROM variants WHERE item_id = ? AND company_id = ? ORDER BY variant_name
     `, [req.params.itemId, req.user.company_id]);
     ApiResponse.success(res, rows);
+  } catch (error) {
+    ApiResponse.error(res, error.message);
+  }
+});
+
+router.post('/', verifyToken, async (req, res) => {
+  try {
+    const { variant_name, item_id } = req.body;
+    if (!variant_name || !item_id) {
+      return ApiResponse.error(res, 'Variant name and item_id are required', 400);
+    }
+    const result = await Database.insert('variants', {
+      variant_name,
+      item_id: parseInt(item_id),
+      company_id: req.user.company_id
+    });
+    ApiResponse.success(res, { id: result.insertId, variant_name, item_id }, 'Variant created', 201);
+  } catch (error) {
+    ApiResponse.error(res, error.message);
+  }
+});
+
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const { variant_name, item_id } = req.body;
+    if (!variant_name) {
+      return ApiResponse.error(res, 'Variant name is required', 400);
+    }
+    const updateData = { variant_name };
+    if (item_id) {
+      updateData.item_id = parseInt(item_id);
+    }
+    await Database.update('variants', updateData, 'id = ? AND company_id = ?', [req.params.id, req.user.company_id]);
+    ApiResponse.success(res, null, 'Variant updated');
+  } catch (error) {
+    ApiResponse.error(res, error.message);
+  }
+});
+
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return ApiResponse.error(res, 'Invalid variant ID', 400);
+    }
+    await Database.delete('variants', 'id = ? AND company_id = ?', [id, req.user.company_id]);
+    ApiResponse.success(res, null, 'Variant deleted');
   } catch (error) {
     ApiResponse.error(res, error.message);
   }
