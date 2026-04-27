@@ -163,20 +163,20 @@ router.get('/customer-ltv', verifyToken, requireOwner, async (req, res) => {
 router.get('/purchase-vs-sales', verifyToken, requireOwner, async (req, res) => {
   try {
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
     
     const salesData = await Database.getOne(`
       SELECT COALESCE(SUM(ei.total), 0) as total_sales, COALESCE(SUM(ei.quantity), 0) as total_kg_sold
       FROM exports e JOIN export_items ei ON e.id = ei.export_id 
       WHERE e.company_id = ? AND e.date >= ? AND e.date <= ?
-    `, [req.user.company_id, firstDayOfMonth.toISOString().split('T')[0], lastDayOfMonth.toISOString().split('T')[0]]);
+    `, [req.user.company_id, firstDayOfLastMonth.toISOString().split('T')[0], lastDayOfLastMonth.toISOString().split('T')[0]]);
 
     const purchaseData = await Database.getOne(`
       SELECT COALESCE(SUM(pi.total), 0) as total_purchases, COALESCE(SUM(pi.quantity), 0) as total_kg_purchased
       FROM purchases p JOIN purchase_items pi ON p.id = pi.purchase_id 
       WHERE p.company_id = ? AND p.date >= ? AND p.date <= ?
-    `, [req.user.company_id, firstDayOfMonth.toISOString().split('T')[0], lastDayOfMonth.toISOString().split('T')[0]]);
+    `, [req.user.company_id, firstDayOfLastMonth.toISOString().split('T')[0], lastDayOfLastMonth.toISOString().split('T')[0]]);
 
     const totalSales = parseFloat(salesData?.total_sales || 0);
     const totalPurchases = parseFloat(purchaseData?.total_purchases || 0);
@@ -192,7 +192,7 @@ router.get('/purchase-vs-sales', verifyToken, requireOwner, async (req, res) => 
         profit_margin: profitMargin,
         kg_sold: parseFloat(salesData?.total_kg_sold || 0),
         kg_purchased: parseFloat(purchaseData?.total_kg_purchased || 0),
-        period: 'This Month'
+        period: 'Last Month'
       }
     });
   } catch (error) {
