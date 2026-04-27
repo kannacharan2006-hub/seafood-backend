@@ -218,6 +218,8 @@ class AuthService {
 
     await sendEmail(email, 'Welcome to Seafood ERP', EmailTemplates.welcomeEmail(owner_name, email, company_name));
 
+    await this.seedDefaultData(companyId);
+
     const token = TokenService.generateAccessToken({
       id: userId,
       role: "OWNER",
@@ -240,6 +242,44 @@ class AuthService {
         company_id: companyId
       }
     };
+  }
+
+  static async seedDefaultData(companyId) {
+    const defaultData = [
+      { category: 'Shrimps', items: [
+        { name: 'Tiger shrimp', variants: ['10','15','20','25','30','35','40','45','50','60','70','80','90','100','110','115','120','130','140'] },
+        { name: 'Vannamei shrimp', variants: ['10','15','20','25','30','35','40','45','50','60','70','80','90','100','110','115','120','130','140'] }
+      ]},
+      { category: 'Crabs', items: [
+        { name: 'Crabs', variants: ['XXL','XL','BIG','MEDIUM','OL','RED','XL-WATER','BIG-WATER','MED-WATER','DEAD'] }
+      ]},
+      { category: 'Fishes', items: [
+        { name: 'Regular-fish', variants: ['seer','promfet','botchee','korameen'] }
+      ]}
+    ];
+
+    for (const cat of defaultData) {
+      const catResult = await Database.execute(
+        `INSERT INTO categories (name, company_id) VALUES (?, ?)`,
+        [cat.category, companyId]
+      );
+      const categoryId = catResult.insertId;
+
+      for (const item of cat.items) {
+        const itemResult = await Database.execute(
+          `INSERT INTO items (name, category_id, company_id) VALUES (?, ?, ?)`,
+          [item.name, categoryId, companyId]
+        );
+        const itemId = itemResult.insertId;
+
+        for (const variant of item.variants) {
+          await Database.execute(
+            `INSERT INTO variants (variant_name, item_id, company_id) VALUES (?, ?, ?)`,
+            [variant, itemId, companyId]
+          );
+        }
+      }
+    }
   }
 
   static async sendPasswordChangeNotification(email, userName) {
