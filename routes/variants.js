@@ -67,7 +67,7 @@ router.put('/:id', verifyToken, async (req, res) => {
 
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    final id = parseInt(req.params.id);
     if (isNaN(id)) {
       return ApiResponse.error(res, 'Invalid variant ID', 400);
     }
