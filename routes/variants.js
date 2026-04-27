@@ -67,8 +67,8 @@ router.put('/:id', verifyToken, async (req, res) => {
 
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    final id = parseInt(req.params.id);
-    if (isNaN(id)) {
+    const id = parseInt(req.params.id);
+    if (id <= 0) {
       return ApiResponse.error(res, 'Invalid variant ID', 400);
     }
     await Database.delete('variants', 'id = ? AND company_id = ?', [id, req.user.company_id]);
