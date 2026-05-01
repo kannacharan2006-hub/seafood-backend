@@ -67,7 +67,7 @@ router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
       ORDER BY p.created_at DESC, p.id DESC
     `, [vendorId, companyId]);
 
-    ApiResponse.success(res, { data: results });
+    ApiResponse.success(res, results);
   } catch (error) {
     ApiResponse.error(res, error.message);
   }
