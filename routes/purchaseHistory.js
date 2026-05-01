@@ -34,6 +34,7 @@ router.get('/', verifyToken, async (req, res) => {
       LIMIT ? OFFSET ?
     `, [companyId, limit, offset]);
 
+    // Return in format expected by frontend: {data: [...], pagination: {...}}
     ApiResponse.success(res, {
       data: results,
       pagination: { currentPage: page, totalPages, totalItems, itemsPerPage: limit, hasNextPage: page < totalPages, hasPrevPage: page > 1 }
