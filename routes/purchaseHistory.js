@@ -67,7 +67,7 @@ router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
       ORDER BY p.created_at DESC, p.id DESC
     `, [vendorId, companyId]);
 
-    ApiResponse.success(res, results);
+    ApiResponse.success(res, { data: results });
   } catch (error) {
     ApiResponse.error(res, error.message);
   }
@@ -117,36 +117,6 @@ router.get('/:id', verifyToken, async (req, res) => {
     `, [purchaseId, companyId]);
 
     ApiResponse.success(res, { ...header, items });
-  } catch (error) {
-    ApiResponse.error(res, error.message);
-  }
-});
-
-router.get('/vendor/:vendorId', verifyToken, async (req, res) => {
-  const companyId = req.user.company_id;
-  const vendorId = req.params.vendorId;
-
-  try {
-    const results = await Database.getAll(`
-      SELECT
-        p.id AS purchase_id,
-        p.date,
-        p.created_at,
-        p.total_amount,
-        p.payment_status,
-        p.payment_mode,
-        p.payment_phone,
-        p.payment_date,
-        ven.name AS vendor_name,
-        u.name AS created_by
-      FROM purchases p
-      JOIN vendors ven ON p.vendor_id = ven.id
-      JOIN users u ON p.created_by = u.id
-      WHERE p.vendor_id = ? AND p.company_id = ?
-      ORDER BY p.created_at DESC, p.id DESC
-    `, [vendorId, companyId]);
-
-    ApiResponse.success(res, results);
   } catch (error) {
     ApiResponse.error(res, error.message);
   }
