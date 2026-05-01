@@ -21,10 +21,30 @@ app.use(helmet());
 // Configure CORS with restrictions
 const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : [];
-    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+    // In development, allow all origins
+    if (process.env.NODE_ENV === 'development') {
+      callback(null, true);
+      return;
+    }
+    
+    // In production, check allowed origins
+    const allowedOrigins = process.env.FRONTEND_URL ? 
+      process.env.FRONTEND_URL.split(',').map(url => url.trim()) : [];
+    
+    // Allow requests with no origin (like mobile apps, curl, etc.) or matching origins
+    if (!origin || allowedOrigins.length === 0) {
+      callback(null, true);
+      return;
+    }
+    
+    // Normalize origin (remove trailing slash)
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const normalizedAllowed = allowedOrigins.map(o => o.replace(/\/$/, ''));
+    
+    if (normalizedAllowed.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('CORS policy: Origin not allowed'));
     }
   },
