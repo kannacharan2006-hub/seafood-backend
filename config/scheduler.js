@@ -2,33 +2,35 @@ const cron = require('node-cron');
 const db = require('../config/db');
 const logger = require('./logger');
 const { wsManager } = require('./websocket');
+const TokenService = require('../services/tokenService');
 
 class SchedulerService {
   static start() {
     logger.info('Starting scheduler service...');
 
-    cron.schedule('0 2 * * *', async () => {
+    cron.schedule('0 1 * * *', async () => {
+      await this.cleanupExpiredTokens();
       await this.archiveOldExports();
       await this.broadcastToAllCompanies('archive_completed', { task: 'archive_old_exports' });
     }, {
       timezone: 'Asia/Kolkata'
     });
 
-    cron.schedule('0 3 * * *', async () => {
+    cron.schedule('0 2 * * *', async () => {
       await this.cleanupOrphanedRecords();
       await this.broadcastToAllCompanies('cleanup_completed', { task: 'cleanup_orphaned_records' });
     }, {
       timezone: 'Asia/Kolkata'
     });
 
-    cron.schedule('0 4 * * 0', async () => {
+    cron.schedule('0 3 * * 0', async () => {
       await this.generateWeeklyReport();
       await this.broadcastToAllCompanies('weekly_report_generated', { task: 'weekly_report' });
     }, {
       timezone: 'Asia/Kolkata'
     });
 
-    cron.schedule('0 5 1 * *', async () => {
+    cron.schedule('0 4 1 * *', async () => {
       await this.archiveOldData();
       await this.broadcastToAllCompanies('archive_completed', { task: 'archive_old_data' });
     }, {
@@ -36,6 +38,15 @@ class SchedulerService {
     });
 
     logger.info('Scheduler service started successfully');
+  }
+
+  static async cleanupExpiredTokens() {
+    try {
+      await TokenService.cleanupExpiredTokens();
+      logger.info('Cleaned up expired refresh tokens');
+    } catch (error) {
+      logger.error('Cleanup expired tokens error:', error);
+    }
   }
 
   static async broadcastToAllCompanies(type, data) {

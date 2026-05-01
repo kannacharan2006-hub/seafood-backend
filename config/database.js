@@ -63,6 +63,34 @@ function validateIdentifier(identifier) {
   return true;
 }
 
+function validateWhereClause(table, where) {
+  if (!where || where === '1=1') return;
+
+  if (!ALLOWED_COLUMNS[table]) {
+    throw new Error(`Unknown table: ${table}`);
+  }
+
+  const allowedColumns = ALLOWED_COLUMNS[table];
+
+  const columnPattern = /(\w+)\s*[=<>!]/g;
+  let match;
+  while ((match = columnPattern.exec(where)) !== null) {
+    const column = match[1];
+    if (!allowedColumns.includes(column)) {
+      logger.warn(`Invalid column '${column}' in WHERE clause for table '${table}'`);
+      throw new Error(`Invalid column '${column}' in WHERE clause for table '${table}'`);
+    }
+  }
+
+  const isPattern = /\w+\s*(IS NULL|IS NOT NULL)/gi;
+  while ((match = isPattern.exec(where)) !== null) {
+    const column = match[1].split(/\s+/)[0];
+    if (!allowedColumns.includes(column)) {
+      throw new Error(`Invalid column '${column}' in WHERE clause for table '${table}'`);
+    }
+  }
+}
+
 class Database {
   static async query(query, params = []) {
     return new Promise((resolve, reject) => {
@@ -110,7 +138,7 @@ class Database {
     validateTable(table);
     const keys = Object.keys(data);
     validateColumns(table, keys);
-    if (where) validateIdentifier(where.split('=')[0].trim());
+    validateWhereClause(table, where);
     const setClause = Object.keys(data).map(key => `${key} = ?`).join(', ');
     const values = [...Object.values(data), ...whereParams];
     const query = `UPDATE ${table} SET ${setClause} WHERE ${where}`;
@@ -120,7 +148,7 @@ class Database {
 
   static async delete(table, where, params = []) {
     validateTable(table);
-    if (where && where !== '1=1') validateIdentifier(where.split('=')[0].trim());
+    validateWhereClause(table, where);
     const query = `DELETE FROM ${table} WHERE ${where}`;
     const [result] = await db.promise().query(query, params);
     return result;
@@ -128,7 +156,7 @@ class Database {
 
   static async count(table, where = '1=1', params = []) {
     validateTable(table);
-    if (where && where !== '1=1') validateIdentifier(where.split('=')[0].trim());
+    validateWhereClause(table, where);
     const query = `SELECT COUNT(*) as count FROM ${table} WHERE ${where}`;
     const result = await this.getOne(query, params);
     return result ? result.count : 0;

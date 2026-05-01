@@ -16,7 +16,13 @@ class ExportService {
 
       if (!customerCheck.length) throw new Error("Customer not found");
 
-      const invoice_no = "INV" + Date.now();
+       // Get next invoice number using a sequence-like approach
+       const [invoiceResult] = await connection.query(
+         `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 4) AS UNSIGNED)), 0) + 1 as next_id 
+          FROM exports 
+          WHERE invoice_no LIKE 'INV%'`
+       );
+       const invoice_no = "INV" + invoiceResult[0].next_id.toString().padStart(6, '0');
 
       // Insert export
       const [exportResult] = await connection.query(
@@ -147,16 +153,41 @@ class ExportService {
       LIMIT ? OFFSET ?
     `, [companyId, limit, offset]);
 
+    if (exports.length === 0) {
+      const totalPages = Math.ceil(totalItems / limit);
+      return {
+        data: [],
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      };
+    }
+
+    const exportIds = exports.map(exp => exp.id);
+
+    const [allItems] = await db.promise().query(`
+      SELECT ei.export_id, i.name AS item_name, v.variant_name, ei.quantity, ei.price_per_kg, ei.total
+      FROM export_items ei
+      JOIN variants v ON ei.variant_id = v.id
+      JOIN items i ON v.item_id = i.id
+      WHERE ei.export_id IN (?) AND ei.company_id = ?
+    `, [exportIds, companyId]);
+
+    const itemsByExportId = {};
+    for (const item of allItems) {
+      if (!itemsByExportId[item.export_id]) {
+        itemsByExportId[item.export_id] = [];
+      }
+      itemsByExportId[item.export_id].push(item);
+    }
+
     for (let exp of exports) {
-      const [items] = await db.promise().query(`
-        SELECT i.name AS item_name, v.variant_name, ei.quantity, ei.price_per_kg, ei.total
-        FROM export_items ei
-        JOIN variants v ON ei.variant_id = v.id
-        JOIN items i ON v.item_id = i.id
-        WHERE ei.export_id=? AND ei.company_id=?`,
-        [exp.id, companyId]
-      );
-      exp.items = items;
+      exp.items = itemsByExportId[exp.id] || [];
     }
 
     const totalPages = Math.ceil(totalItems / limit);

@@ -45,7 +45,12 @@ const authValidation = {
     body('owner_name').notEmpty().trim().withMessage('Owner name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('phone').optional().trim(),
+    body('phone').optional().trim().custom(value => {
+      if (value && !/^[0-9+\-\s()]{10,20}$/.test(value)) {
+        throw new Error('Invalid phone number format');
+      }
+      return true;
+    }),
     validate
   ],
   
@@ -54,7 +59,12 @@ const authValidation = {
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('role').isIn(['OWNER', 'EMPLOYEE']).withMessage('Invalid role'),
-    body('phone').optional().trim(),
+    body('phone').optional().trim().custom(value => {
+      if (value && !/^[0-9+\-\s()]{10,20}$/.test(value)) {
+        throw new Error('Invalid phone number format');
+      }
+      return true;
+    }),
     validate
   ]
 };
@@ -67,6 +77,13 @@ const purchaseValidation = {
     body('items.*.variant_id').isInt().withMessage('Variant ID is required'),
     body('items.*.quantity').isFloat({ gt: 0 }).withMessage('Quantity must be greater than 0'),
     body('items.*.price_per_kg').isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
+    body('payment_mode').optional().isIn(['CASH', 'UPI', 'BANK_TRANSFER', 'NONE']).withMessage('Invalid payment mode'),
+    body('payment_phone').optional().trim().custom(value => {
+      if (value && !/^[0-9+\-\s()]{10,20}$/.test(value)) {
+        throw new Error('Invalid phone number format');
+      }
+      return true;
+    }),
     validate
   ]
 };
@@ -99,7 +116,12 @@ const conversionValidation = {
 const vendorValidation = {
   create: [
     body('name').notEmpty().trim().withMessage('Vendor name is required'),
-    body('phone').optional().trim(),
+    body('phone').optional().trim().custom(value => {
+      if (value && !/^[0-9+\-\s()]{10,20}$/.test(value)) {
+        throw new Error('Invalid phone number format');
+      }
+      return true;
+    }),
     body('address').optional().trim(),
     validate
   ]
@@ -108,7 +130,12 @@ const vendorValidation = {
 const customerValidation = {
   create: [
     body('name').notEmpty().trim().withMessage('Customer name is required'),
-    body('phone').optional().trim(),
+    body('phone').optional().trim().custom(value => {
+      if (value && !/^[0-9+\-\s()]{10,20}$/.test(value)) {
+        throw new Error('Invalid phone number format');
+      }
+      return true;
+    }),
     body('address').optional().trim(),
     validate
   ]
@@ -118,12 +145,16 @@ const paymentValidation = {
   customerPayment: [
     body('customer_id').isInt().withMessage('Customer ID is required'),
     body('amount').isFloat({ gt: 0 }).withMessage('Amount must be greater than 0'),
+    body('payment_mode').optional().isIn(['CASH', 'UPI', 'BANK_TRANSFER']).withMessage('Invalid payment mode'),
+    body('payment_reference').optional().trim(),
     validate
   ],
   
   vendorPayment: [
     body('vendor_id').isInt().withMessage('Vendor ID is required'),
     body('amount').isFloat({ gt: 0 }).withMessage('Amount must be greater than 0'),
+    body('payment_mode').optional().isIn(['CASH', 'UPI', 'BANK_TRANSFER']).withMessage('Invalid payment mode'),
+    body('payment_reference').optional().trim(),
     validate
   ]
 };

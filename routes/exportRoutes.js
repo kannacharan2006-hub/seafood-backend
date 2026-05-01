@@ -8,6 +8,9 @@ const { wsManager } = require('../config/websocket');
 const ApiResponse = require('../utils/response');
 
 router.post('/', verifyToken, exportValidation.create, async (req, res) => {
+  if (!['OWNER', 'EMPLOYEE'].includes(req.user.role)) {
+    return ApiResponse.forbidden(res, 'Access denied');
+  }
   try {
     const { customer_id, date, items } = req.body;
     const result = await ExportService.createExport(

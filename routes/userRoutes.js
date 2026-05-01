@@ -47,7 +47,10 @@ router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, r
     return ApiResponse.forbidden(res, 'Access denied');
   }
   try {
-    await Database.delete('users', 'id = ?', [req.params.id]);
+    const result = await Database.delete('users', 'id = ? AND company_id = ?', [req.params.id, req.user.company_id]);
+    if (result.affectedRows === 0) {
+      return ApiResponse.notFound(res, 'User not found');
+    }
     ApiResponse.success(res, null, 'Employee deleted');
   } catch (error) {
     ApiResponse.error(res, error.message);
@@ -60,7 +63,10 @@ router.put('/:id', verifyToken, commonValidations.idValidation, async (req, res)
   }
   const { name, email, phone } = req.body;
   try {
-    await Database.update('users', { name, email, phone }, 'id = ?', [req.params.id]);
+    const result = await Database.update('users', { name, email, phone }, 'id = ? AND company_id = ?', [req.params.id, req.user.company_id]);
+    if (result.affectedRows === 0) {
+      return ApiResponse.notFound(res, 'User not found');
+    }
     ApiResponse.success(res, null, 'Employee updated');
   } catch (error) {
     ApiResponse.error(res, error.message);

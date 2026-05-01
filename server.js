@@ -19,11 +19,20 @@ app.set('trust proxy', 1);
 
 app.use(helmet());
 // Configure CORS with restrictions
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : [];
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS policy: Origin not allowed'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' })); // Limit request body to 10KB
 app.use(express.urlencoded({ extended: true, limit: '10kb' })); // Limit URL-encoded body
 app.use(requestIdMiddleware);
@@ -42,7 +51,6 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(limiter);
 
 /* ================= ROUTES ================= */
-app.use(require('./middleware/errorHandler'));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/purchases', require('./routes/purchaseRoutes'));
@@ -73,21 +81,7 @@ app.get('/api/test', (req, res) => {
 });
 
 /* ================= GLOBAL ERROR HANDLER ================= */
-
-app.use((err, req, res, next) => {
-    logger.error('Request failed', {
-        requestId: req.requestId,
-        error: err.message,
-        stack: err.stack,
-        method: req.method,
-        url: req.originalUrl
-    });
-    res.status(500).json({
-        success: false,
-        message: 'Internal Server Error',
-        requestId: req.requestId
-    });
-});
+app.use(require('./middleware/errorHandler'));
 
 /* ================= SERVER ================= */
 

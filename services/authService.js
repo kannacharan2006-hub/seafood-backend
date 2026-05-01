@@ -89,27 +89,31 @@ class AuthService {
       throw new Error('Refresh token required');
     }
 
-    const decoded = jwt.decode(refreshToken);
-    if (!decoded) {
-      throw new Error('Invalid refresh token format');
+    try {
+      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+      
+      const isValid = await TokenService.verifyRefreshToken(decoded.id, refreshToken);
+      if (!isValid) {
+        throw new Error('Invalid or expired refresh token');
+      }
+
+      const user = await Database.getOne('SELECT * FROM users WHERE id = ?', [decoded.id]);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const newAccessToken = TokenService.generateAccessToken(user);
+
+      return {
+        token: newAccessToken,
+        expiresIn: 3600 // 1 hour in seconds
+      };
+    } catch (error) {
+      if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+        throw new Error('Invalid or expired refresh token');
+      }
+      throw error;
     }
-
-    const isValid = await TokenService.verifyRefreshToken(decoded.id, refreshToken);
-    if (!isValid) {
-      throw new Error('Invalid or expired refresh token');
-    }
-
-    const user = await Database.getOne('SELECT * FROM users WHERE id = ?', [decoded.id]);
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    const newAccessToken = TokenService.generateAccessToken(user);
-
-    return {
-      token: newAccessToken,
-      expiresIn: 900
-    };
   }
 
   static async logout(userId, refreshToken) {
@@ -201,50 +205,61 @@ class AuthService {
 
   static async registerCompany(company_name, owner_name, email, password, phone) {
     const hashedPassword = await bcrypt.hash(password, 10);
+    let companyId;
+    let userId;
 
-    const companyResult = await Database.execute(
-      `INSERT INTO companies (name, phone, email) VALUES (?, ?, ?)`,
-      [company_name, phone, email]
-    );
+    const connection = await Database.beginTransaction();
 
-    const companyId = companyResult.insertId;
+    try {
+      const companyResult = await Database.execute(
+        `INSERT INTO companies (name, phone, email) VALUES (?, ?, ?)`,
+        [company_name, phone, email],
+        connection
+      );
+      companyId = companyResult.insertId;
 
-    const userResult = await Database.execute(
-      `INSERT INTO users (name, email, password_hash, role, phone, company_id) VALUES (?, ?, ?, 'OWNER', ?, ?)`,
-      [owner_name, email, hashedPassword, phone, companyId]
-    );
+      const userResult = await Database.execute(
+        `INSERT INTO users (name, email, password_hash, role, phone, company_id) VALUES (?, ?, ?, 'OWNER', ?, ?)`,
+        [owner_name, email, hashedPassword, phone, companyId],
+        connection
+      );
+      userId = userResult.insertId;
 
-    const userId = userResult.insertId;
+      await Database.commit(connection);
 
-    await sendEmail(email, 'Welcome to Seafood ERP', EmailTemplates.welcomeEmail(owner_name, email, company_name));
+      await sendEmail(email, 'Welcome to Seafood ERP', EmailTemplates.welcomeEmail(owner_name, email, company_name));
 
-    await this.seedDefaultData(companyId);
+      await this.seedDefaultData(companyId);
 
-    const token = TokenService.generateAccessToken({
-      id: userId,
-      role: "OWNER",
-      company_id: companyId
-    });
-
-    const refreshToken = TokenService.generateRefreshToken();
-    await TokenService.saveRefreshToken(userId, refreshToken);
-
-    return {
-      message: "Company created successfully",
-      token,
-      refreshToken: refreshToken,
-      expiresIn: 900,
-      user: {
+      const token = TokenService.generateAccessToken({
         id: userId,
-        name: owner_name,
-        email,
         role: "OWNER",
         company_id: companyId
-      }
-    };
-  }
+      });
 
-  static async seedDefaultData(companyId) {
+      const refreshToken = TokenService.generateRefreshToken();
+      await TokenService.saveRefreshToken(userId, refreshToken);
+
+      return {
+        message: "Company created successfully",
+        token,
+        refreshToken: refreshToken,
+        expiresIn: 3600,
+        user: {
+          id: userId,
+          name: owner_name,
+          email,
+          role: "OWNER",
+          company_id: companyId
+        }
+      };
+      } catch (error) {
+        await Database.rollback(connection);
+        throw error;
+      }
+    }
+
+    static async seedDefaultData(companyId) {
     const defaultData = [
       { category: 'Shrimps', items: [
         { name: 'Tiger shrimp', variants: ['10','15','20','25','30','35','40','45','50','60','70','80','90','100','110','115','120','130','140'] },
