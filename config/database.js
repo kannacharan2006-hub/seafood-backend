@@ -2,7 +2,8 @@ const db = require('./db');
 const logger = require('./logger');
 
 const ALLOWED_TABLES = [
-  'users', 'companies', 'categories', 'items', 'variants',
+  'users', 'companies', 'subscriptions', 'referrals', 'coupons',
+  'categories', 'items', 'variants',
   'vendors', 'customers', 'purchases', 'purchase_items',
   'exports', 'export_items', 'conversions', 'conversion_inputs', 'conversion_outputs',
   'raw_stock', 'final_stock', 'customer_payments', 'vendor_payments', 'refresh_tokens'
@@ -11,6 +12,9 @@ const ALLOWED_TABLES = [
 const ALLOWED_COLUMNS = {
   users: ['id', 'name', 'email', 'password_hash', 'phone', 'role', 'company_id', 'created_at'],
   companies: ['id', 'name', 'email', 'phone', 'address', 'created_at'],
+  subscriptions: ['id', 'company_id', 'plan_id', 'status', 'razorpay_customer_id', 'razorpay_subscription_id', 'current_period_start', 'current_period_end', 'cancel_at_period_end', 'created_at'],
+  referrals: ['id', 'company_id', 'referral_code', 'referred_by', 'referral_credits', 'created_at'],
+  coupons: ['id', 'code', 'discount_type', 'discount_value', 'valid_until', 'max_uses', 'used_count', 'created_at'],
   categories: ['id', 'name', 'company_id', 'created_at'],
   items: ['id', 'name', 'category_id', 'company_id', 'created_at'],
   variants: ['id', 'item_id', 'variant_name', 'company_id', 'created_at'],

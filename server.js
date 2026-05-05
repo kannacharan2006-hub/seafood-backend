@@ -86,6 +86,7 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/items', require('./routes/items'));
 app.use('/api/variants', require('./routes/variants'));
 app.use('/api/purchase-history', require('./routes/purchaseHistory'));
+app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/health', require('./routes/healthRoutes'));
 
 /* ================= HEALTH CHECK ================= */
