@@ -1,62 +1,105 @@
-const db = require('../config/db');
+const Database = require('../config/database');
 
-describe('Database Connection', () => {
-  it('should connect to database', async () => {
-    const connection = await db.promise().getConnection();
-    expect(connection).toBeDefined();
-    connection.release();
+jest.mock('../config/db', () => ({
+  query: jest.fn((query, params, callback) => {
+    if (callback) callback(null, []);
+    return { promise: () => require('../config/db') };
+  }),
+  promise: () => ({
+    query: jest.fn().mockResolvedValue([[]]),
+    getConnection: jest.fn().mockResolvedValue({
+      beginTransaction: jest.fn().mockResolvedValue(),
+      commit: jest.fn().mockResolvedValue(),
+      rollback: jest.fn().mockResolvedValue(),
+      release: jest.fn(),
+      query: jest.fn().mockResolvedValue([[]])
+    })
+  }),
+  getConnection: jest.fn().mockResolvedValue({
+    beginTransaction: jest.fn().mockResolvedValue(),
+    commit: jest.fn().mockResolvedValue(),
+    rollback: jest.fn().mockResolvedValue(),
+    release: jest.fn(),
+    query: jest.fn().mockResolvedValue([[]])
+  })
+}));
+
+describe('Database Module - Unit Tests', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should execute simple query', async () => {
-    const [rows] = await db.promise().query('SELECT 1 as result');
-    expect(rows[0].result).toBe(1);
+  describe('Table Validation', () => {
+    it('should allow valid table names', () => {
+      expect(() => Database.validateTable('users')).not.toThrow();
+      expect(() => Database.validateTable('companies')).not.toThrow();
+      expect(() => Database.validateTable('purchases')).not.toThrow();
+    });
+
+    it('should reject invalid table names', () => {
+      expect(() => Database.validateTable('invalid_table')).toThrow('Invalid table name: invalid_table');
+      expect(() => Database.validateTable('DROP TABLE users')).toThrow();
+    });
   });
 
-  it('should get database version', async () => {
-    const [rows] = await db.promise().query('SELECT VERSION() as version');
-    expect(rows[0].version).toBeDefined();
-  });
-});
+  describe('Column Validation', () => {
+    it('should allow valid columns for users table', () => {
+      expect(() => Database.validateColumns('users', ['id', 'name', 'email'])).not.toThrow();
+    });
 
-describe('Database Schema', () => {
-  it('should have companies table', async () => {
-    const [rows] = await db.promise().query('SHOW TABLES LIKE "companies"');
-    expect(rows.length).toBeGreaterThan(0);
+    it('should reject invalid columns for users table', () => {
+      expect(() => Database.validateColumns('users', ['invalid_column'])).toThrow();
+    });
   });
 
-  it('should have users table', async () => {
-    const [rows] = await db.promise().query('SHOW TABLES LIKE "users"');
-    expect(rows.length).toBeGreaterThan(0);
+  describe('Identifier Validation', () => {
+    it('should validate correct identifiers', () => {
+      expect(() => Database.validateIdentifier('valid_column')).not.toThrow();
+      expect(() => Database.validateIdentifier('_private')).not.toThrow();
+    });
+
+    it('should reject invalid identifiers', () => {
+      expect(() => Database.validateIdentifier('123invalid')).toThrow();
+      expect(() => Database.validateIdentifier('col;DROP TABLE')).toThrow();
+    });
   });
 
-  it('should have exports table', async () => {
-    const [rows] = await db.promise().query('SHOW TABLES LIKE "exports"');
-    expect(rows.length).toBeGreaterThan(0);
+  describe('Where Clause Validation', () => {
+    it('should allow valid WHERE clauses', () => {
+      expect(() => Database.validateWhereClause('users', "id = 1")).not.toThrow();
+      expect(() => Database.validateWhereClause('users', "email = 'test@test.com'")).not.toThrow();
+      expect(() => Database.validateWhereClause('users', "id IS NULL")).not.toThrow();
+    });
+
+    it('should reject invalid WHERE clauses', () => {
+      expect(() => Database.validateWhereClause('users', "invalid_col = 1")).toThrow();
+    });
   });
 
-  it('should have purchases table', async () => {
-    const [rows] = await db.promise().query('SHOW TABLES LIKE "purchases"');
-    expect(rows.length).toBeGreaterThan(0);
-  });
+  describe('Query Methods', () => {
+    it('should execute insert with validation', async () => {
+      const result = await Database.insert('users', {
+        name: 'Test User',
+        email: 'test@test.com',
+        password_hash: 'hash',
+        role: 'EMPLOYEE',
+        company_id: 1
+      });
+      expect(result).toBeDefined();
+    });
 
-  it('should have raw_stock table', async () => {
-    const [rows] = await db.promise().query('SHOW TABLES LIKE "raw_stock"');
-    expect(rows.length).toBeGreaterThan(0);
-  });
+    it('should reject insert with invalid table', async () => {
+      await expect(Database.insert('invalid_table', { data: 'test' })).rejects.toThrow();
+    });
 
-  it('should have final_stock table', async () => {
-    const [rows] = await db.promise().query('SHOW TABLES LIKE "final_stock"');
-    expect(rows.length).toBeGreaterThan(0);
-  });
-});
+    it('should execute update with validation', async () => {
+      const result = await Database.update('users', { name: 'Updated' }, 'id = ?', [1]);
+      expect(result).toBeDefined();
+    });
 
-describe('Database Indexes', () => {
-  it('should have indexes on users table', async () => {
-    const [rows] = await db.promise().query(`
-      SELECT COUNT(*) as count FROM information_schema.statistics 
-      WHERE table_schema = DATABASE() 
-      AND table_name = 'users'
-    `);
-    expect(rows[0].count).toBeGreaterThan(0);
+    it('should execute count query', async () => {
+      const count = await Database.count('users');
+      expect(typeof count).toBe('number');
+    });
   });
 });

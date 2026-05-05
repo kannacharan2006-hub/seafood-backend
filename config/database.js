@@ -202,3 +202,7 @@ class Database {
 }
 
 module.exports = Database;
+module.exports.validateTable = validateTable;
+module.exports.validateColumns = validateColumns;
+module.exports.validateIdentifier = validateIdentifier;
+module.exports.validateWhereClause = validateWhereClause;

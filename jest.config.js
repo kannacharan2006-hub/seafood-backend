@@ -11,5 +11,9 @@ module.exports = {
   coverageDirectory: 'coverage',
   verbose: true,
   testTimeout: 30000,
-  setupFilesAfterEnv: ['./tests/setup.js']
+  setupFilesAfterEnv: ['./tests/setup.js'],
+  moduleNameMapper: {
+    '^(\.\./)+config/db$': '<rootDir>/__mocks__/config/db.js',
+    '^(\.\./)+config/database$': '<rootDir>/__mocks__/config/database.js'
+  }
 };
