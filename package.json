@@ -28,6 +28,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.2",
     "pdfkit": "^0.17.2",
+    "razorpay": "^2.9.6",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^14.0.0",
