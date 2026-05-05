@@ -30,14 +30,14 @@
     "pdfkit": "^0.17.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "uuid": "^13.0.0",
+    "uuid": "^14.0.0",
     "winston": "^3.17.0",
     "ws": "^8.20.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "babel-jest": "^30.3.0",
-    "babel-preset-env": "^1.7.0",
+    "babel-preset-env": "^0.0.0",
     "jest": "^30.3.0",
     "supertest": "^7.2.2"
   }
