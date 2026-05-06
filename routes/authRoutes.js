@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const { authValidation } = require('../config/validation');
-const { loginLimiter, registerLimiter } = require('../config/rateLimit');
+const { loginLimiter, authLimiter, registerLimiter } = require('../config/rateLimit');
 const AuthService = require('../services/authService');
 const ApiResponse = require('../utils/response');
 
