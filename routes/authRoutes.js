@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const { authValidation } = require('../config/validation');
-const { loginLimiter, authLimiter } = require('../config/rateLimit');
+const { loginLimiter, registerLimiter } = require('../config/rateLimit');
 const AuthService = require('../services/authService');
 const ApiResponse = require('../utils/response');
 
@@ -244,12 +244,16 @@ router.post('/users', verifyToken, authLimiter, authValidation.registerUser, asy
  *       400:
  *         description: Validation error
  */
-router.post('/register-company', authLimiter, authValidation.registerCompany, async (req, res) => {
+router.post('/register-company', registerLimiter, authValidation.registerCompany, async (req, res) => {
   try {
     const { company_name, owner_name, email, password, phone } = req.body;
     const result = await AuthService.registerCompany(company_name, owner_name, email, password, phone);
     ApiResponse.success(res, result, 'Company created successfully', 201);
   } catch (error) {
+    // Return proper status codes for known errors
+    if (error.message.includes('already registered')) {
+      return ApiResponse.error(res, error.message, 409);
+    }
     ApiResponse.error(res, error.message, 500);
   }
 });

@@ -30,6 +30,18 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Stricter: only 5 registration attempts per IP per 15 minutes
+  message: {
+    success: false,
+    message: 'Too many registration attempts, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful registrations
+});
+
 const paymentLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 20, // limit each IP to 20 payment requests per minute
@@ -74,6 +86,7 @@ module.exports = {
   limiter,
   authLimiter,
   loginLimiter,
+  registerLimiter,
   paymentLimiter,
   apiLimiter,
   dataEntryLimiter,

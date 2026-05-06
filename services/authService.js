@@ -208,6 +208,23 @@ class AuthService {
     let companyId;
     let userId;
 
+    // Pre-check for duplicates before transaction (prevents DB errors)
+    const [existingEmail] = await Database.execute(
+      'SELECT id FROM users WHERE email = ?', [email]
+    );
+    if (existingEmail && existingEmail.length > 0) {
+      throw new Error('Email already registered');
+    }
+
+    if (phone) {
+      const [existingPhone] = await Database.execute(
+        'SELECT id FROM users WHERE phone = ?', [phone]
+      );
+      if (existingPhone && existingPhone.length > 0) {
+        throw new Error('Phone number already registered');
+      }
+    }
+
     const connection = await Database.beginTransaction();
 
     try {
@@ -227,9 +244,14 @@ class AuthService {
 
       await Database.commit(connection);
 
-      await sendEmail(email, 'Welcome to Seafood ERP', EmailTemplates.welcomeEmail(owner_name, email, company_name));
-
-      await this.seedDefaultData(companyId);
+      // Send email in background (non-blocking) - don't await
+      sendEmail(email, 'Welcome to Seafood ERP', EmailTemplates.welcomeEmail(owner_name, email, company_name))
+        .catch(err => logger.error('Welcome email failed', { error: err.message, email }));
+      
+      // Seed default data in background
+      this.seedDefaultData(companyId).catch(err => 
+        logger.error('Seed data failed', { error: err.message, companyId })
+      );
 
       const token = TokenService.generateAccessToken({
         id: userId,
@@ -241,6 +263,7 @@ class AuthService {
       await TokenService.saveRefreshToken(userId, refreshToken);
 
       return {
+        success: true,
         message: "Company created successfully",
         token,
         refreshToken: refreshToken,
@@ -255,6 +278,15 @@ class AuthService {
       };
       } catch (error) {
         await Database.rollback(connection);
+        // Handle DB duplicate constraints (race condition safety)
+        if (error.code === 'ER_DUP_ENTRY') {
+          if (error.message.includes('phone')) {
+            throw new Error('Phone number already registered');
+          }
+          if (error.message.includes('email')) {
+            throw new Error('Email already registered');
+          }
+        }
         throw error;
       }
     }

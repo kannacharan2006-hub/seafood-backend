@@ -1,4 +1,5 @@
 const mysql = require('mysql2');
+const logger = require('./logger');
 
 const db = mysql.createPool({
     host: process.env.DB_HOST,
@@ -20,12 +21,10 @@ const db = mysql.createPool({
 });
 
 db.on('connection', (connection) => {
-    console.log(`[DB] New connection established: ${connection.threadId}`);
+    logger.debug(`[DB] New connection: ${connection.threadId}`);
     connection.query(`SET time_zone = '+05:30'`);
 });
 
-db.on('release', (connection) => {
-    console.log(`[DB] Connection released: ${connection.threadId}`);
-});
+// Removed verbose release logging - was spamming logs
 
 module.exports = db;
