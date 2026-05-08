@@ -87,6 +87,7 @@ app.use('/api/items', require('./routes/items'));
 app.use('/api/variants', require('./routes/variants'));
 app.use('/api/purchase-history', require('./routes/purchaseHistory'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
+app.use('/api/webhook', require('./routes/webhookRoutes'));
 app.use('/health', require('./routes/healthRoutes'));
 
 /* ================= HEALTH CHECK ================= */

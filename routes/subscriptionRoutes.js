@@ -93,15 +93,6 @@ router.post('/referral', verifyToken, async (req, res) => {
   }
 });
 
-// Webhook handler (no auth needed)
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    const event = JSON.parse(req.body);
-    await SubscriptionService.handleWebhook(event);
-    res.json({ status: 'ok' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+
 
 module.exports = router;
