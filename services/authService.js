@@ -292,40 +292,121 @@ class AuthService {
     }
 
     static async seedDefaultData(companyId) {
-    const defaultData = [
-      { category: 'Shrimps', items: [
-        { name: 'Tiger shrimp', variants: ['10','15','20','25','30','35','40','45','50','60','70','80','90','100','110','115','120','130','140'] },
-        { name: 'Vannamei shrimp', variants: ['10','15','20','25','30','35','40','45','50','60','70','80','90','100','110','115','120','130','140'] }
-      ]},
-      { category: 'Crabs', items: [
-        { name: 'Crabs', variants: ['XXL','XL','BIG','MEDIUM','OL','RED','XL-WATER','BIG-WATER','MED-WATER','DEAD'] }
-      ]},
-      { category: 'Fishes', items: [
-        { name: 'Regular-fish', variants: ['seer','promfet','botchee','korameen'] }
-      ]}
-    ];
-
-    for (const cat of defaultData) {
-      const catResult = await Database.execute(
-        `INSERT INTO categories (name, company_id) VALUES (?, ?)`,
-        [cat.category, companyId]
+    const logger = require('../config/logger');
+    
+    try {
+      // Check if company already has categories (idempotency check)
+      const existingCategories = await Database.execute(
+        'SELECT COUNT(*) as count FROM categories WHERE company_id = ?',
+        [companyId]
       );
-      const categoryId = catResult.insertId;
-
-      for (const item of cat.items) {
-        const itemResult = await Database.execute(
-          `INSERT INTO items (name, category_id, company_id) VALUES (?, ?, ?)`,
-          [item.name, categoryId, companyId]
-        );
-        const itemId = itemResult.insertId;
-
-        for (const variant of item.variants) {
-          await Database.execute(
-            `INSERT INTO variants (variant_name, item_id, company_id) VALUES (?, ?, ?)`,
-            [variant, itemId, companyId]
-          );
-        }
+      
+      if (existingCategories[0].count > 0) {
+        logger.info('Default data already seeded, skipping', { companyId });
+        return; // Already seeded, don't duplicate
       }
+
+      const defaultData = [
+        { 
+          category: 'Shrimps', 
+          items: [
+            { name: 'Tiger shrimp', variants: ['10','15','20','25','30','35','40','45','50','60','70','80','90','100','110','115','120','130','140'] },
+            { name: 'Vannamei shrimp', variants: ['10','15','20','25','30','35','40','45','50','60','70','80','90','100','110','115','120','130','140'] }
+          ]
+        },
+        { 
+          category: 'Crabs', 
+          items: [
+            { name: 'Crabs', variants: ['XXL','XL','BIG','MEDIUM','OL','RED','XL-WATER','BIG-WATER','MED-WATER','DEAD'] }
+          ]
+        },
+        { 
+          category: 'Fishes', 
+          items: [
+            { name: 'Regular-fish', variants: ['seer','promfet','botchee','korameen'] }
+          ]
+        }
+      ];
+
+      // Use transaction for atomic seeding
+      const connection = await Database.beginTransaction();
+      
+      try {
+        for (const cat of defaultData) {
+          // Check if category already exists (safety check)
+          const [existingCat] = await Database.execute(
+            'SELECT id FROM categories WHERE name = ? AND company_id = ?',
+            [cat.category, companyId],
+            connection
+          );
+          
+          let categoryId;
+          if (existingCat && existingCat.length > 0) {
+            categoryId = existingCat[0].id;
+            logger.debug('Category already exists, reusing', { category: cat.category, companyId });
+          } else {
+            const catResult = await Database.execute(
+              `INSERT INTO categories (name, company_id) VALUES (?, ?)`,
+              [cat.category, companyId],
+              connection
+            );
+            categoryId = catResult.insertId;
+          }
+
+          for (const item of cat.items) {
+            // Check if item already exists
+            const [existingItem] = await Database.execute(
+              'SELECT id FROM items WHERE name = ? AND category_id = ? AND company_id = ?',
+              [item.name, categoryId, companyId],
+              connection
+            );
+            
+            let itemId;
+            if (existingItem && existingItem.length > 0) {
+              itemId = existingItem[0].id;
+            } else {
+              const itemResult = await Database.execute(
+                `INSERT INTO items (name, category_id, company_id) VALUES (?, ?, ?)`,
+                [item.name, categoryId, companyId],
+                connection
+              );
+              itemId = itemResult.insertId;
+            }
+
+            // Only seed variants if they don't exist
+            const existingVariants = await Database.execute(
+              'SELECT COUNT(*) as count FROM variants WHERE item_id = ? AND company_id = ?',
+              [itemId, companyId],
+              connection
+            );
+            
+            if (existingVariants[0].count === 0) {
+              for (const variant of item.variants) {
+                await Database.execute(
+                  `INSERT INTO variants (variant_name, item_id, company_id) VALUES (?, ?, ?)`,
+                  [variant, itemId, companyId],
+                  connection
+                );
+              }
+            }
+          }
+        }
+        
+        await Database.commit(connection);
+        logger.info('Default data seeded successfully', { 
+          companyId,
+          categories: defaultData.length,
+          items: defaultData.reduce((sum, cat) => sum + cat.items.length, 0)
+        });
+        
+      } catch (error) {
+        await Database.rollback(connection);
+        throw error;
+      }
+      
+    } catch (error) {
+      logger.error('Failed to seed default data', { error: error.message, companyId });
+      throw error; // Re-throw so caller knows
     }
   }
 

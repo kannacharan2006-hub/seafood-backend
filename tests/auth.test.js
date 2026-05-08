@@ -11,7 +11,8 @@ jest.mock('../middleware/auth', () => (req, res, next) => {
 });
 jest.mock('../config/rateLimit', () => ({
   loginLimiter: (req, res, next) => next(),
-  authLimiter: (req, res, next) => next()
+  authLimiter: (req, res, next) => next(),
+  registerLimiter: (req, res, next) => next()
 }));
 
 const AuthService = require('../services/authService');

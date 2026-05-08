@@ -108,8 +108,12 @@ class Database {
     });
   }
 
-  static async execute(query, params = []) {
+  static async execute(query, params = [], connection = null) {
     try {
+      if (connection) {
+        const [results] = await connection.query(query, params);
+        return results;
+      }
       const [results] = await db.promise().query(query, params);
       return results;
     } catch (err) {
