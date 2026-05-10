@@ -134,7 +134,7 @@ class PurchaseService {
       const purchase = await Database.getOne(
         `SELECT p.*, v.name AS vendor_name, v.phone AS vendor_phone, v.address AS vendor_address 
          FROM purchases p 
-         JOIN vendors v ON p.vendor_id = v.id 
+         LEFT JOIN vendors v ON p.vendor_id = v.id 
          WHERE p.id = ? AND p.company_id = ?`,
         [purchaseId, companyId]
       );
@@ -146,8 +146,8 @@ class PurchaseService {
       const items = await Database.getAll(
         `SELECT pi.*, i.name AS item_name, var.variant_name 
          FROM purchase_items pi 
-         JOIN variants var ON pi.variant_id = var.id 
-         JOIN items i ON var.item_id = i.id 
+         LEFT JOIN variants var ON pi.variant_id = var.id 
+         LEFT JOIN items i ON var.item_id = i.id 
          WHERE pi.purchase_id = ? AND pi.company_id = ?`,
         [purchaseId, companyId]
       );
@@ -158,12 +158,12 @@ class PurchaseService {
       );
 
       const vendor = {
-        name: purchase.vendor_name,
-        phone: purchase.vendor_phone,
-        address: purchase.vendor_address
+        name: purchase.vendor_name || 'N/A',
+        phone: purchase.vendor_phone || '',
+        address: purchase.vendor_address || ''
       };
 
-      const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
+      const grandTotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
 
       return { items, company, vendor, grandTotal, purchaseDate: purchase.date };
     }
