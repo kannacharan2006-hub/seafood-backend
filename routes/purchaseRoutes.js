@@ -120,12 +120,12 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
     items.forEach((item, index) => {
       const bgColor = index % 2 === 0 ? 'white' : lightBg;
       doc.rect(40, y, 515, 45).fill(bgColor).stroke(borderColor);
-      const displayName = item.variant_name ? `${item.item_name} - ${item.variant_name}` : item.item_name;
+      const displayName = (item.variant_name ? `${item.item_name} - ${item.variant_name}` : item.item_name) || 'N/A';
       doc.fillColor(textDark).fontSize(11).font('Helvetica')
          .text(displayName.substring(0, 35), 50, y+10)
-         .text(item.quantity.toFixed(2), 300, y+10, { align: 'center' })
-         .text(`₹${item.price_per_kg.toFixed(2)}`, 380, y+10, { align: 'center' })
-         .text(`₹${item.total.toFixed(2)}`, 485, y+10, { align: 'right' });
+         .text((item.quantity || 0).toFixed(2), 300, y+10, { align: 'center' })
+         .text(`₹${(item.price_per_kg || 0).toFixed(2)}`, 380, y+10, { align: 'center' })
+         .text(`₹${(item.total || 0).toFixed(2)}`, 485, y+10, { align: 'right' });
       y += 45;
     });
 
@@ -133,13 +133,13 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
     doc.rect(300, y, 255, 80).fill(lightBg).stroke(borderColor);
     doc.fillColor(textLight).fontSize(10).font('Helvetica')
        .text('Subtotal', 315, y+15)
-       .text(`₹${grandTotal.toFixed(2)}`, 480, y+15, { align: 'right' });
+       .text(`₹${(grandTotal || 0).toFixed(2)}`, 480, y+15, { align: 'right' });
     
     y += 40;
     doc.rect(300, y, 255, 50).fill(accentColor);
     doc.fillColor('white').fontSize(14).font('Helvetica-Bold')
        .text('GRAND TOTAL', 315, y+18);
-    doc.fontSize(18).text(`₹${grandTotal.toFixed(2)}`, 380, y+16, { align: 'right' });
+    doc.fontSize(18).text(`₹${(grandTotal || 0).toFixed(2)}`, 380, y+16, { align: 'right' });
 
     y += 80;
     doc.fillColor(textDark).fontSize(11).font('Helvetica-Bold').text('Terms & Conditions', 40, y);
