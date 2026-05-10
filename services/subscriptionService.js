@@ -146,6 +146,23 @@ class SubscriptionService {
     );
     logger.info('Subscription cancelled', { subscription_id: sub.id });
   }
+
+  static async cancelSubscriptionManually(companyId, subscription) {
+    try {
+      if (subscription.razorpay_subscription_id) {
+        await razorpay.subscriptions.cancel(subscription.razorpay_subscription_id);
+      }
+      await Database.update(
+        'subscriptions',
+        { status: 'cancelled' },
+        'id = ?', [subscription.id]
+      );
+      logger.info('Subscription manually cancelled', { companyId, subscriptionId: subscription.id });
+    } catch (error) {
+      logger.error('Failed to cancel subscription manually', { error: error.message, companyId });
+      throw error;
+    }
+  }
 }
 
 module.exports = SubscriptionService;

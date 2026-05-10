@@ -4,6 +4,7 @@ const verifyToken = require('../middleware/auth');
 const SubscriptionService = require('../services/subscriptionService');
 const ReferralService = require('../services/referralService');
 const CouponService = require('../services/couponService');
+const Database = require('../config/database');
 const plans = require('../config/subscriptionPlans');
 const ApiResponse = require('../utils/response');
 
@@ -72,6 +73,21 @@ router.post('/verify', verifyToken, async (req, res) => {
   }
 });
 
+// Cancel subscription
+router.post('/cancel', verifyToken, async (req, res) => {
+  try {
+    const companyId = req.user.company_id;
+    const subscription = await SubscriptionService.getActiveSubscription(companyId);
+    if (!subscription) {
+      return ApiResponse.error(res, 'No active subscription found', 404);
+    }
+    await SubscriptionService.cancelSubscriptionManually(companyId, subscription);
+    ApiResponse.success(res, null, 'Subscription cancelled successfully');
+  } catch (error) {
+    ApiResponse.error(res, error.message, 500);
+  }
+});
+
 // Get subscription status
 router.get('/status', verifyToken, async (req, res) => {
   try {
@@ -93,6 +109,19 @@ router.post('/referral', verifyToken, async (req, res) => {
   }
 });
 
-
+// Get referral info (own code + credits)
+router.get('/referral-info', verifyToken, async (req, res) => {
+  try {
+    const companyId = req.user.company_id;
+    const referral = await Database.getOne(
+      'SELECT * FROM referrals WHERE company_id = ?', [companyId]
+    );
+    const credits = referral ? referral.referral_credits : 0;
+    const code = referral ? referral.referral_code : null;
+    ApiResponse.success(res, { referralCode: code, credits }, 'Referral info');
+  } catch (error) {
+    ApiResponse.error(res, error.message, 500);
+  }
+});
 
 module.exports = router;
