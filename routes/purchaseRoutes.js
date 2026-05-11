@@ -123,9 +123,9 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
       const displayName = (item.variant_name ? `${item.item_name} - ${item.variant_name}` : item.item_name) || 'N/A';
       doc.fillColor(textDark).fontSize(11).font('Helvetica')
          .text(displayName.substring(0, 35), 50, y+10)
-         .text((item.quantity || 0).toFixed(2), 300, y+10, { align: 'center' })
-         .text(`₹${(item.price_per_kg || 0).toFixed(2)}`, 380, y+10, { align: 'center' })
-         .text(`₹${(item.total || 0).toFixed(2)}`, 485, y+10, { align: 'right' });
+         .text(item.quantity.toFixed(2), 300, y+10, { align: 'center' })
+         .text(`₹${item.price_per_kg.toFixed(2)}`, 380, y+10, { align: 'center' })
+         .text(`₹${item.total.toFixed(2)}`, 485, y+10, { align: 'right' });
       y += 45;
     });
 

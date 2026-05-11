@@ -143,7 +143,7 @@ class PurchaseService {
         throw new Error("Purchase not found");
       }
 
-      const items = await Database.getAll(
+      let items = await Database.getAll(
         `SELECT pi.*, i.name AS item_name, var.variant_name 
          FROM purchase_items pi 
          LEFT JOIN variants var ON pi.variant_id = var.id 
@@ -151,6 +151,13 @@ class PurchaseService {
          WHERE pi.purchase_id = ? AND pi.company_id = ?`,
         [purchaseId, companyId]
       );
+
+      items = items.map(item => ({
+        ...item,
+        quantity: Number(item.quantity) || 0,
+        price_per_kg: Number(item.price_per_kg) || 0,
+        total: Number(item.total) || 0,
+      }));
 
       const company = await Database.getOne(
         `SELECT name, phone, email FROM companies WHERE id = ?`,
@@ -163,7 +170,7 @@ class PurchaseService {
         address: purchase.vendor_address || ''
       };
 
-      const grandTotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
+      const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
 
       return { items, company, vendor, grandTotal, purchaseDate: purchase.date };
     }
