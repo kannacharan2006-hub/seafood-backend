@@ -86,7 +86,7 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
     doc.fontSize(10).font('Helvetica')
        .text(`${company.email || ''} | ${company.phone || ''}`, 40, 55);
     doc.fillColor(accentColor).fontSize(36).font('Helvetica-Bold')
-       .text('PURCHASE', 400, 30, { align: 'right' });
+       .text('INVOICE', 400, 30, { align: 'right' });
     doc.fillColor('white').fontSize(12)
        .text(`#PR-${req.params.id.toString().padStart(6, '0')}`, 400, 70, { align: 'right' });
 
