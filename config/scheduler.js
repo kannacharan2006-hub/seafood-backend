@@ -170,35 +170,53 @@ class SchedulerService {
       );
 
       if (purchases[0].count > 0) {
-        await db.promise().query(
-          `INSERT INTO purchases_archive 
-           (purchase_id, vendor_id, supplier_type, date, total_amount, created_by, company_id, archived_at)
-           SELECT id, vendor_id, supplier_type, date, total_amount, created_by, company_id, NOW()
-           FROM purchases WHERE date < ?`,
-          [cutoffDate]
-        );
+        const connection = await db.promise().getConnection();
+        try {
+          await connection.beginTransaction();
 
-        await db.promise().query(
-          `INSERT INTO purchase_items_archive 
-           (archive_purchase_id, variant_id, quantity, price_per_kg, total, company_id)
-           SELECT pa.id, pi.variant_id, pi.quantity, pi.price_per_kg, pi.total, pi.company_id
-           FROM purchase_items pi
-           JOIN purchases_archive pa ON pi.purchase_id = pa.purchase_id
-           WHERE pa.archived_at = NOW()`,
-          []
-        );
+          // 1. Archive matching purchases
+          await connection.query(
+            `INSERT INTO purchases_archive 
+             (purchase_id, vendor_id, supplier_type, date, total_amount, created_by, company_id, archived_at)
+             SELECT id, vendor_id, supplier_type, date, total_amount, created_by, company_id, NOW()
+             FROM purchases WHERE date < ?`,
+            [cutoffDate]
+          );
 
-        await db.promise().query(
-          `DELETE FROM purchase_items WHERE purchase_id IN (SELECT id FROM purchases WHERE date < ?)`,
-          [cutoffDate]
-        );
+          // 2. Archive purchase_items by joining on purchase_id with only the newly archived rows.
+          //    No reliance on timestamps — uses the fact that purchases_archive.purchase_id
+          //    uniquely maps back to the original purchases table.
+          await connection.query(
+            `INSERT INTO purchase_items_archive 
+             (archive_purchase_id, variant_id, quantity, price_per_kg, total, company_id)
+             SELECT pa.id, pi.variant_id, pi.quantity, pi.price_per_kg, pi.total, pi.company_id
+             FROM purchase_items pi
+             INNER JOIN purchases_archive pa ON pi.purchase_id = pa.purchase_id
+             WHERE pi.purchase_id IN (SELECT id FROM purchases WHERE date < ?)`,
+            [cutoffDate]
+          );
 
-        await db.promise().query(
-          `DELETE FROM purchases WHERE date < ?`,
-          [cutoffDate]
-        );
+          // 3. Delete purchase_items for archived purchases
+          await connection.query(
+            `DELETE FROM purchase_items WHERE purchase_id IN (SELECT id FROM purchases WHERE date < ?)`,
+            [cutoffDate]
+          );
 
-        logger.info(`Archived ${purchases[0].count} old purchase records`);
+          // 4. Delete the original purchase records
+          await connection.query(
+            `DELETE FROM purchases WHERE date < ?`,
+            [cutoffDate]
+          );
+
+          await connection.commit();
+          logger.info(`Archived ${purchases[0].count} old purchase records`);
+        } catch (txError) {
+          await connection.rollback();
+          logger.error('Archive old data transaction failed, rolled back:', txError);
+          throw txError;
+        } finally {
+          connection.release();
+        }
       }
     } catch (error) {
       logger.error('Archive old data error:', error);
