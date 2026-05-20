@@ -47,14 +47,14 @@ describe('Validation Middleware', () => {
     });
   });
 
-  describe('Password Validation', () => {
-    it('should reject passwords shorter than 6 characters', () => {
-      expect(isValidPassword('12345')).toBe(false);
+describe('Password Validation', () => {
+    it('should reject passwords shorter than 8 characters', () => {
+      expect(isValidPassword('1234567')).toBe(false);
       expect(isValidPassword('123')).toBe(false);
     });
 
-    it('should accept passwords with 6+ characters', () => {
-      expect(isValidPassword('123456')).toBe(true);
+    it('should accept passwords with 8+ characters', () => {
+      expect(isValidPassword('12345678')).toBe(true);
       expect(isValidPassword('password123')).toBe(true);
     });
   });
@@ -80,7 +80,7 @@ function isValidEmail(email) {
 }
 
 function isValidPassword(password) {
-  return password && password.length >= 6;
+  return password && password.length >= 8;
 }
 
 function isValidOtp(otp) {

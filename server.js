@@ -12,45 +12,63 @@ const { wsManager } = require('./config/websocket');
 const SchedulerService = require('./config/scheduler');
 const { requestIdMiddleware, requestLogger } = require('./middleware/requestLogger');
 
+/* ================= ENVIRONMENT VALIDATION ================= */
+
+const REQUIRED_ENV_VARS = ['JWT_SECRET', 'DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+const missingVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missingVars.join(', ')}`);
+    process.exit(1);
+}
+
 const app = express();
 app.set('trust proxy', 1);
 
 /* ================= MIDDLEWARE ================= */
 
 app.use(helmet());
+
 // Configure CORS with restrictions
 const corsOptions = {
-  origin: (origin, callback) => {
-    // In development, allow all origins
-    if (process.env.NODE_ENV === 'development') {
-      callback(null, true);
-      return;
-    }
-    
-    // In production, check allowed origins
-    const allowedOrigins = process.env.FRONTEND_URL ? 
-      process.env.FRONTEND_URL.split(',').map(url => url.trim()) : [];
-    
-    // Allow requests with no origin (like mobile apps, curl, etc.) or matching origins
-    if (!origin || allowedOrigins.length === 0) {
-      callback(null, true);
-      return;
-    }
-    
-    // Normalize origin (remove trailing slash)
-    const normalizedOrigin = origin.replace(/\/$/, '');
-    const normalizedAllowed = allowedOrigins.map(o => o.replace(/\/$/, ''));
-    
-    if (normalizedAllowed.includes(normalizedOrigin)) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('CORS policy: Origin not allowed'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+    origin: (origin, callback) => {
+        // In development, allow all origins
+        if (process.env.NODE_ENV === 'development') {
+            callback(null, true);
+            return;
+        }
+
+        // In production, require FRONTEND_URL to be set
+        const allowedOrigins = process.env.FRONTEND_URL ?
+            process.env.FRONTEND_URL.split(',').map(url => url.trim()) : [];
+
+        // In production, if no FRONTEND_URL is configured, deny by default
+        if (allowedOrigins.length === 0) {
+            logger.warn('CORS: No FRONTEND_URL configured. Denying cross-origin requests by default.');
+            callback(new Error('CORS policy: Not configured for production'));
+            return;
+        }
+
+        // Allow requests with no origin (like mobile apps, curl, etc.)
+        if (!origin) {
+            callback(null, true);
+            return;
+        }
+
+        // Normalize origin (remove trailing slash)
+        const normalizedOrigin = origin.replace(/\/$/, '');
+        const normalizedAllowed = allowedOrigins.map(o => o.replace(/\/$/, ''));
+
+        if (normalizedAllowed.includes(normalizedOrigin)) {
+            callback(null, true);
+        } else {
+            logger.warn('CORS blocked origin:', origin);
+            callback(new Error('CORS policy: Origin not allowed'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 };
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' })); // Limit request body to 10KB
@@ -59,9 +77,9 @@ app.use(requestIdMiddleware);
 app.use(requestLogger);
 
 app.use(morgan('combined', {
-  stream: {
-    write: (message) => logger.info(message.trim())
-  }
+    stream: {
+        write: (message) => logger.info(message.trim())
+    }
 }));
 
 /* ================= API DOCUMENTATION ================= */
@@ -102,7 +120,18 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'Test route working' });
 });
 
+/* ================= 404 HANDLER ================= */
+
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        message: `Route not found: ${req.method} ${req.originalUrl}`,
+        statusCode: 404
+    });
+});
+
 /* ================= GLOBAL ERROR HANDLER ================= */
+
 app.use(require('./middleware/errorHandler'));
 
 /* ================= SERVER ================= */
@@ -114,11 +143,48 @@ wsManager.initialize(server);
 
 server.listen(PORT, '0.0.0.0', () => {
     logger.info(`Server running on http://0.0.0.0:${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`WebSocket available at ws://0.0.0.0:${PORT}/ws`);
     logger.info(`Health check available at http://0.0.0.0:${PORT}/health`);
     SchedulerService.start();
-    
+
     // Start scheduled backups
     const BackupService = require('./services/backupService');
     BackupService.startScheduledBackups();
 });
+
+/* ================= GRACEFUL SHUTDOWN ================= */
+
+function gracefulShutdown(signal) {
+    logger.info(`Received ${signal}. Starting graceful shutdown...`);
+
+    // Stop accepting new connections
+    server.close(() => {
+        logger.info('HTTP server closed.');
+
+        // Close WebSocket connections
+        wsManager.close();
+        logger.info('WebSocket server closed.');
+
+        // Close database pool
+        const db = require('./config/db');
+        db.end((err) => {
+            if (err) {
+                logger.error('Error closing database pool:', err);
+            } else {
+                logger.info('Database pool closed.');
+            }
+            logger.info('Graceful shutdown complete.');
+            process.exit(0);
+        });
+    });
+
+    // Force shutdown after 10 seconds if graceful shutdown hangs
+    setTimeout(() => {
+        logger.error('Forced shutdown after timeout.');
+        process.exit(1);
+    }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

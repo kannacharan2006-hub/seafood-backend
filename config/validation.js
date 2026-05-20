@@ -44,7 +44,7 @@ const authValidation = {
     body('company_name').notEmpty().trim().withMessage('Company name is required'),
     body('owner_name').notEmpty().trim().withMessage('Owner name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
     body('phone').optional().trim().custom(value => {
       if (value && !/^[0-9+\-\s()]{10,20}$/.test(value)) {
         throw new Error('Invalid phone number format');
@@ -57,7 +57,7 @@ const authValidation = {
   registerUser: [
     body('name').notEmpty().trim().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
     body('role').isIn(['OWNER', 'EMPLOYEE']).withMessage('Invalid role'),
     body('phone').optional().trim().custom(value => {
       if (value && !/^[0-9+\-\s()]{10,20}$/.test(value)) {

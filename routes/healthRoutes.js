@@ -8,15 +8,28 @@ const requestLogger = require('../services/requestLogger');
  * @swagger
  * /health:
  *   get:
- *     summary: Basic health check
- *     description: Returns a simple health status
+ *     summary: Basic health check (with DB connectivity)
+ *     description: Returns health status including database connectivity check
  *     responses:
  *       200:
- *         description: Server is running
+ *         description: Server and database are healthy
+ *       503:
+ *         description: Service unavailable (database down)
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
+  const dbHealth = await healthService.checkDatabase();
+  
+  if (dbHealth.status !== 'healthy') {
+    return res.status(503).json({ 
+      status: 'unhealthy',
+      database: dbHealth,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   res.json({ 
-    status: 'ok', 
+    status: 'ok',
+    database: dbHealth,
     timestamp: new Date().toISOString() 
   });
 });

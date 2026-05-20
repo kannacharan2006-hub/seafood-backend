@@ -1,6 +1,8 @@
 const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const crypto = require('crypto');
 const { exec } = require('child_process');
 const logger = require('../config/logger');
 
@@ -22,6 +24,31 @@ class BackupService {
     return `seafood_erp_backup_${timestamp}`;
   }
 
+  /**
+   * Write DB credentials to a temporary .my.cnf file so the password
+   * is NOT exposed in the process list (visible via ps aux / task manager).
+   * The file is created with restricted permissions and destroyed after use.
+   */
+  _createTempMyCnf(dbConfig) {
+    const randomName = `._mycnf_${crypto.randomBytes(8).toString('hex')}`;
+    const cnfPath = path.join(os.tmpdir(), randomName);
+
+    const content = `[client]\nhost="${dbConfig.host}"\nuser="${dbConfig.user}"\npassword="${dbConfig.password}"\n`;
+    fs.writeFileSync(cnfPath, content, { mode: 0o600, encoding: 'utf8' });
+
+    return cnfPath;
+  }
+
+  _destroyTempMyCnf(cnfPath) {
+    try {
+      if (cnfPath && fs.existsSync(cnfPath)) {
+        fs.unlinkSync(cnfPath);
+      }
+    } catch (err) {
+      logger.warn('Failed to remove temporary MySQL config file:', err.message);
+    }
+  }
+
   async createBackup() {
     const dbConfig = {
       host: process.env.DB_HOST || 'localhost',
@@ -34,10 +61,23 @@ class BackupService {
     const filepath = path.join(this.backupDir, `${filename}.sql`);
     const gzFilepath = `${filepath}.gz`;
 
-    const mysqldumpCmd = `mysqldump -h ${dbConfig.host} -u ${dbConfig.user}${dbConfig.password ? ` -p${dbConfig.password}` : ''} ${dbConfig.database}`;
+    // Write credentials to a temp .my.cnf (never on the command line)
+    let cnfPath = null;
+    try {
+      cnfPath = this._createTempMyCnf(dbConfig);
+    } catch (err) {
+      logger.error('Failed to create temporary MySQL config file:', err);
+      throw err;
+    }
+
+    // mysqldump reads credentials from the config file via --defaults-extra-file
+    const mysqldumpCmd = `mysqldump --defaults-extra-file="${cnfPath}" -h ${dbConfig.host} ${dbConfig.database}`;
 
     return new Promise((resolve, reject) => {
-      const dumpProcess = exec(`${mysqldumpCmd} | gzip > ${gzFilepath}`, (error, stdout, stderr) => {
+      exec(`${mysqldumpCmd} | gzip > "${gzFilepath}"`, (error, stdout, stderr) => {
+        // Always clean up the temp config file — even on error
+        this._destroyTempMyCnf(cnfPath);
+
         if (error) {
           logger.error('Backup failed:', error);
           reject(error);

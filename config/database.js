@@ -44,8 +44,6 @@ function validateTable(table) {
   return true;
 }
 
-const _validateColumns = validateColumns;
-
 function validateColumns(table, columns) {
   if (!ALLOWED_COLUMNS[table]) {
     logger.warn(`Unknown table in column validation: ${table}`);

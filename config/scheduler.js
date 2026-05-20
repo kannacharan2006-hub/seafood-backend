@@ -95,11 +95,11 @@ class SchedulerService {
       );
 
       const [deletedInputs] = await db.promise().query(
-        `DELETE FROM conversion_inputs WHERE conversion_id NOT IN (SELECT id FROM conversion)`
+        `DELETE FROM conversion_inputs WHERE conversion_id NOT IN (SELECT id FROM conversions)`
       );
 
       const [deletedOutputs] = await db.promise().query(
-        `DELETE FROM conversion_outputs WHERE conversion_id NOT IN (SELECT id FROM conversion)`
+        `DELETE FROM conversion_outputs WHERE conversion_id NOT IN (SELECT id FROM conversions)`
       );
 
       const total = deletedItems.affectedRows + deletedPurchases.affectedRows + 

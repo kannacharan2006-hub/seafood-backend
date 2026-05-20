@@ -35,6 +35,9 @@ Thumbs.db
 # Debug
 npm-debug.log*
 
+# DB backups
+backups/
+
 # Temp
 tmp/
 temp/

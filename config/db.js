@@ -1,6 +1,8 @@
 const mysql = require('mysql2');
 const logger = require('./logger');
 
+const DB_TIMEZONE = process.env.DB_TIMEZONE || '+05:30';
+
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -13,7 +15,7 @@ const db = mysql.createPool({
     idleTimeout: 60000,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
-    timezone: '+05:30',
+    timezone: DB_TIMEZONE,
     dateStrings: false,
     ssl: {
         rejectUnauthorized: true
@@ -22,7 +24,7 @@ const db = mysql.createPool({
 
 db.on('connection', (connection) => {
     logger.debug(`[DB] New connection: ${connection.threadId}`);
-    connection.query(`SET time_zone = '+05:30'`);
+    connection.query(`SET time_zone = '${DB_TIMEZONE}'`);
 });
 
 // Removed verbose release logging - was spamming logs

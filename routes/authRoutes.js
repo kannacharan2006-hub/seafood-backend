@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
+const { roleMiddleware } = require('../middleware/roleAuth');
 const { authValidation } = require('../config/validation');
 const { loginLimiter, authLimiter, registerLimiter } = require('../config/rateLimit');
 const AuthService = require('../services/authService');
@@ -185,7 +186,7 @@ router.post('/logout', verifyToken, async (req, res) => {
  *                 format: email
  *               password:
  *                 type: string
- *                 minLength: 6
+ *                 minLength: 8
  *               role:
  *                 type: string
  *                 enum: [OWNER, EMPLOYEE]
@@ -197,7 +198,7 @@ router.post('/logout', verifyToken, async (req, res) => {
  *       403:
  *         description: Access denied
  */
-router.post('/users', verifyToken, authLimiter, authValidation.registerUser, async (req, res) => {
+router.post('/users', verifyToken, roleMiddleware(['OWNER']), authLimiter, authValidation.registerUser, async (req, res) => {
   try {
     const { name, email, password, role, phone } = req.body;
     const company_id = req.user.company_id;
@@ -235,7 +236,7 @@ router.post('/users', verifyToken, authLimiter, authValidation.registerUser, asy
  *                 format: email
  *               password:
  *                 type: string
- *                 minLength: 6
+ *                 minLength: 8
  *               phone:
  *                 type: string
  *     responses:
