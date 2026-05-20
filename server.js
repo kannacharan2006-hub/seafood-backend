@@ -42,10 +42,10 @@ const corsOptions = {
         const allowedOrigins = process.env.FRONTEND_URL ?
             process.env.FRONTEND_URL.split(',').map(url => url.trim()) : [];
 
-        // In production, if no FRONTEND_URL is configured, deny by default
+        // In production, if no FRONTEND_URL is configured, allow all origins (permissive fallback)
         if (allowedOrigins.length === 0) {
-            logger.warn('CORS: No FRONTEND_URL configured. Denying cross-origin requests by default.');
-            callback(new Error('CORS policy: Not configured for production'));
+            logger.warn('CORS: No FRONTEND_URL configured. Allowing all origins. Set FRONTEND_URL in environment for production security.');
+            callback(null, true);
             return;
         }
 
