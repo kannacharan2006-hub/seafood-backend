@@ -41,12 +41,14 @@ class SubscriptionService {
       const subscription = await razorpay.subscriptions.create({
         plan_id: plan.id,
         customer_notify: 1,
-        total_count: 12,
+        total_count: plan.totalCount || 12,
         notes: { 
           company_id: companyId,
           plan: planId
         }
       });
+
+      const periodMs = (plan.periodDays || 30) * 24 * 60 * 60 * 1000;
 
       await Database.insert('subscriptions', {
         company_id: companyId,
@@ -55,7 +57,7 @@ class SubscriptionService {
         razorpay_customer_id: customerId,
         razorpay_subscription_id: subscription.id,
         current_period_start: new Date(),
-        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        current_period_end: new Date(Date.now() + periodMs)
       });
 
       return { 
@@ -68,16 +70,16 @@ class SubscriptionService {
     }
   }
 
-  static async verifyPayment(paymentId, orderId, signature) {
+  static async verifySubscriptionPayment(paymentId, subscriptionId, signature) {
     try {
       const expected = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-        .update(orderId + '|' + paymentId)
+        .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET)
+        .update(subscriptionId + '|' + paymentId)
         .digest('hex');
       
       return expected === signature;
     } catch (error) {
-      logger.error('Payment verification failed', { error: error.message });
+      logger.error('Subscription payment verification failed', { error: error.message });
       return false;
     }
   }

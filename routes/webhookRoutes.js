@@ -16,8 +16,9 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       return res.status(400).json({ error: 'Missing Razorpay signature' });
     }
     
-    // Verify the webhook signature
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+    // Verify the webhook signature using the webhook secret
+    // (set this in Razorpay Dashboard → Settings → Webhooks)
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const generatedSignature = crypto
       .createHmac('sha256', secret)
       .update(req.body.toString())

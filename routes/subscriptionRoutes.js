@@ -57,11 +57,11 @@ router.post('/create', verifyToken, async (req, res) => {
   }
 });
 
-// Verify payment (after Razorpay callback)
+// Verify subscription payment (after Razorpay callback)
 router.post('/verify', verifyToken, async (req, res) => {
   try {
-    const { payment_id, order_id, signature } = req.body;
-    const isValid = await SubscriptionService.verifyPayment(payment_id, order_id, signature);
+    const { payment_id, subscription_id, signature } = req.body;
+    const isValid = await SubscriptionService.verifySubscriptionPayment(payment_id, subscription_id, signature);
 
     if (!isValid) {
       return ApiResponse.error(res, 'Invalid payment signature', 400);

@@ -71,8 +71,13 @@ const corsOptions = {
     credentials: true
 };
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '10kb' })); // Limit request body to 10KB
-app.use(express.urlencoded({ extended: true, limit: '10kb' })); // Limit URL-encoded body
+
+// Webhook route MUST be registered BEFORE global body parsers
+// so express.raw() can capture the raw body for HMAC verification
+app.use('/api/webhook', require('./routes/webhookRoutes'));
+
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(requestIdMiddleware);
 app.use(requestLogger);
 
@@ -105,7 +110,6 @@ app.use('/api/items', require('./routes/items'));
 app.use('/api/variants', require('./routes/variants'));
 app.use('/api/purchase-history', require('./routes/purchaseHistory'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
-app.use('/api/webhook', require('./routes/webhookRoutes'));
 app.use('/health', require('./routes/healthRoutes'));
 
 /* ================= HEALTH CHECK ================= */

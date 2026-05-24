@@ -253,6 +253,11 @@ class AuthService {
         logger.error('Seed data failed', { error: err.message, companyId })
       );
 
+      // Auto-create 30-day trial subscription
+      this.createTrialSubscription(companyId).catch(err =>
+        logger.error('Trial subscription creation failed', { error: err.message, companyId })
+      );
+
       const token = TokenService.generateAccessToken({
         id: userId,
         role: "OWNER",
@@ -412,6 +417,30 @@ class AuthService {
 
   static async sendPasswordChangeNotification(email, userName) {
     await sendEmail(email, 'Password Changed - Seafood ERP', EmailTemplates.passwordResetSuccess(userName));
+  }
+
+  static async createTrialSubscription(companyId) {
+    const plans = require('../config/subscriptionPlans');
+
+    const trialPlan = plans.trial;
+
+    // Check if company already has a subscription (idempotency)
+    const existing = await Database.getOne(
+      'SELECT id FROM subscriptions WHERE company_id = ?', [companyId]
+    );
+    if (existing) return;
+
+    const trialEnd = new Date(Date.now() + (trialPlan.periodDays || 30) * 24 * 60 * 60 * 1000);
+
+    await Database.insert('subscriptions', {
+      company_id: companyId,
+      plan_id: 'trial',
+      status: 'active',
+      current_period_start: new Date(),
+      current_period_end: trialEnd
+    });
+
+    logger.info('Trial subscription created', { companyId, trialEnd });
   }
 }
 
