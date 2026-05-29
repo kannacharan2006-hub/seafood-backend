@@ -5,7 +5,7 @@ const { vendorValidation, commonValidations } = require('../config/validation');
 const VendorService = require('../services/vendorService');
 const ApiResponse = require('../utils/response');
 
-router.post('/vendors', verifyToken, vendorValidation.create, async (req, res) => {
+router.post('/', verifyToken, vendorValidation.create, async (req, res) => {
   try {
     const { name, phone, address } = req.body;
     const result = await VendorService.createVendor(req.user.company_id, name, phone, address);
@@ -19,7 +19,7 @@ router.post('/vendors', verifyToken, vendorValidation.create, async (req, res) =
   }
 });
 
-router.get('/vendors', verifyToken, async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     const vendors = await VendorService.getVendors(req.user.company_id);
     ApiResponse.success(res, vendors);
@@ -28,7 +28,7 @@ router.get('/vendors', verifyToken, async (req, res) => {
   }
 });
 
-router.put('/vendors/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.put('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
   try {
     const { name, phone, address } = req.body;
     const result = await VendorService.updateVendor(req.params.id, req.user.company_id, name, phone, address);
@@ -38,7 +38,7 @@ router.put('/vendors/:id', verifyToken, commonValidations.idValidation, async (r
   }
 });
 
-router.delete('/vendors/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
   try {
     const result = await VendorService.deleteVendor(req.params.id, req.user.company_id);
     ApiResponse.success(res, result, 'Vendor deleted');

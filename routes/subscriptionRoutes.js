@@ -8,14 +8,16 @@ const Database = require('../config/database');
 const plans = require('../config/subscriptionPlans');
 const ApiResponse = require('../utils/response');
 
-// Get all plans
+// Get all purchasable plans (excludes trial & expired placeholders)
 router.get('/plans', (req, res) => {
   try {
-    const plansList = Object.entries(plans).map(([key, plan]) => ({
-      id: key,
-      ...plan,
-      price: plan.price / 100 // Convert paise to rupees
-    }));
+    const plansList = Object.entries(plans)
+      .filter(([_, plan]) => plan.price > 0) // Only paid plans
+      .map(([key, plan]) => ({
+        ...plan,
+        id: key, // Use key as id so createSubscription(planId) looks up correctly
+        price: plan.price / 100 // Convert paise to rupees
+      }));
     ApiResponse.success(res, plansList, 'Plans retrieved');
   } catch (error) {
     ApiResponse.error(res, error.message);
