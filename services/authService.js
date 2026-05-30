@@ -4,65 +4,53 @@ const jwt = require('jsonwebtoken');
 const EmailTemplates = require('../config/emailTemplates');
 const logger = require('../config/logger');
 const crypto = require('crypto');
-const https = require('https');
-const querystring = require('querystring');
+const nodemailer = require('nodemailer');
 const TokenService = require('./tokenService');
 
-const sendEmail = async (to, subject, html) => {
-  const apiKey = process.env.MAILGUN_API_KEY;
-  const domain = process.env.MAILGUN_DOMAIN;
-  const fromEmail = process.env.FROM_EMAIL || `noreply@${domain || 'seafood-erp.com'}`;
+let transporter = null;
 
-  if (!apiKey || !domain) {
-    logger.warn('Email not configured - set MAILGUN_API_KEY and MAILGUN_DOMAIN in .env');
+const getTransporter = () => {
+  if (!transporter) {
+    if (!process.env.ZOHO_EMAIL || !process.env.ZOHO_PASSWORD) {
+      return null;
+    }
+    transporter = nodemailer.createTransport({
+      host: 'smtppro.zoho.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.ZOHO_EMAIL,
+        pass: process.env.ZOHO_PASSWORD,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+  }
+  return transporter;
+};
+
+const sendEmail = async (to, subject, html) => {
+  const mailer = getTransporter();
+
+  if (!mailer) {
+    logger.warn('Email not configured - set ZOHO_EMAIL and ZOHO_PASSWORD in .env');
     return false;
   }
 
-  return new Promise((resolve) => {
-    const data = querystring.stringify({
-      from: fromEmail,
+  try {
+    await mailer.sendMail({
+      from: `"Seafood ERP" <${process.env.ZOHO_EMAIL}>`,
       to,
       subject,
       html,
     });
-
-    const req = https.request({
-      hostname: 'api.mailgun.net',
-      path: `/v3/${domain}/messages`,
-      method: 'POST',
-      auth: `api:${apiKey}`,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(data),
-      },
-      timeout: 15000,
-    }, (res) => {
-      let body = '';
-      res.on('data', (chunk) => { body += chunk; });
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          logger.info(`Email sent to ${to}: ${subject}`);
-          resolve(true);
-        } else {
-          logger.error('Email send failed', { status: res.statusCode, body, to, subject });
-          resolve(false);
-        }
-      });
-    });
-
-    req.on('error', (err) => {
-      logger.error('Email send error', { error: err.message, to, subject });
-      resolve(false);
-    });
-    req.on('timeout', () => {
-      req.destroy();
-      logger.error('Email send timeout', { to, subject });
-      resolve(false);
-    });
-
-    req.write(data);
-    req.end();
-  });
+    logger.info(`Email sent to ${to}: ${subject}`);
+    return true;
+  } catch (error) {
+    logger.error('Email send failed', { error: error.message, to, subject });
+    return false;
+  }
 };
 
 class AuthService {
