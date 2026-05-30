@@ -4,32 +4,65 @@ const jwt = require('jsonwebtoken');
 const EmailTemplates = require('../config/emailTemplates');
 const logger = require('../config/logger');
 const crypto = require('crypto');
+const https = require('https');
+const querystring = require('querystring');
 const TokenService = require('./tokenService');
 
 const sendEmail = async (to, subject, html) => {
-  const apiKey = process.env.SENDGRID_API_KEY;
-  const fromEmail = process.env.FROM_EMAIL || 'noreply@seafood-erp.com';
+  const apiKey = process.env.MAILGUN_API_KEY;
+  const domain = process.env.MAILGUN_DOMAIN;
+  const fromEmail = process.env.FROM_EMAIL || `noreply@${domain || 'seafood-erp.com'}`;
 
-  if (!apiKey) {
-    logger.warn('Email not configured - set SENDGRID_API_KEY in .env');
+  if (!apiKey || !domain) {
+    logger.warn('Email not configured - set MAILGUN_API_KEY and MAILGUN_DOMAIN in .env');
     return false;
   }
 
-  try {
-    const sgMail = require('@sendgrid/mail');
-    sgMail.setApiKey(apiKey);
-    await sgMail.send({
-      to,
+  return new Promise((resolve) => {
+    const data = querystring.stringify({
       from: fromEmail,
+      to,
       subject,
       html,
     });
-    logger.info(`Email sent to ${to}: ${subject}`);
-    return true;
-  } catch (error) {
-    logger.error('Email send failed', { error: error.message, to, subject });
-    return false;
-  }
+
+    const req = https.request({
+      hostname: 'api.mailgun.net',
+      path: `/v3/${domain}/messages`,
+      method: 'POST',
+      auth: `api:${apiKey}`,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(data),
+      },
+      timeout: 15000,
+    }, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          logger.info(`Email sent to ${to}: ${subject}`);
+          resolve(true);
+        } else {
+          logger.error('Email send failed', { status: res.statusCode, body, to, subject });
+          resolve(false);
+        }
+      });
+    });
+
+    req.on('error', (err) => {
+      logger.error('Email send error', { error: err.message, to, subject });
+      resolve(false);
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      logger.error('Email send timeout', { to, subject });
+      resolve(false);
+    });
+
+    req.write(data);
+    req.end();
+  });
 };
 
 class AuthService {
