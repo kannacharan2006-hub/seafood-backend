@@ -23,7 +23,7 @@ const sendEmail = async (to, subject, html) => {
       from: fromEmail,
       subject,
       html,
-    }, false);
+    });
     logger.info(`Email sent to ${to}: ${subject}`);
     return true;
   } catch (error) {
