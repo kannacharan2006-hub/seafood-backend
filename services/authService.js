@@ -17,7 +17,7 @@ const sendEmail = async (to, subject, html) => {
 
   return new Promise((resolve) => {
     const data = JSON.stringify({
-      from: 'Seafood ERP <noreply@seafood-erp.com>',
+      from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
       to,
       subject,
       html,
