@@ -1,47 +1,29 @@
 const Database = require('../config/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const EmailTemplates = require('../config/emailTemplates');
 const logger = require('../config/logger');
 const crypto = require('crypto');
 const TokenService = require('./tokenService');
 
-let transporter = null;
-
-const getTransporter = () => {
-  if (!transporter && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    });
-  }
-  return transporter;
-};
-
 const sendEmail = async (to, subject, html) => {
-  const mailer = getTransporter();
-  
-  if (!mailer) {
-    logger.warn('Email not configured - set EMAIL_USER and EMAIL_PASS in .env');
+  const apiKey = process.env.SENDGRID_API_KEY;
+  const fromEmail = process.env.FROM_EMAIL || 'noreply@seafood-erp.com';
+
+  if (!apiKey) {
+    logger.warn('Email not configured - set SENDGRID_API_KEY in .env');
     return false;
   }
-  
+
   try {
-    await mailer.sendMail({
-      from: `"Seafood ERP" <${process.env.EMAIL_USER}>`,
+    const sgMail = require('@sendgrid/mail');
+    sgMail.setApiKey(apiKey);
+    await sgMail.send({
       to,
+      from: fromEmail,
       subject,
-      html
-    });
+      html,
+    }, false);
     logger.info(`Email sent to ${to}: ${subject}`);
     return true;
   } catch (error) {
