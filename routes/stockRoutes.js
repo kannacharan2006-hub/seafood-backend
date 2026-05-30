@@ -8,6 +8,7 @@ router.get('/raw-stock', verifyToken, async (req, res) => {
   try {
     const rows = await Database.getAll(`
       SELECT
+        rs.variant_id,
         i.name AS item_name,
         v.variant_name,
         c.name AS category_name,
