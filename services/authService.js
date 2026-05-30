@@ -141,15 +141,12 @@ class AuthService {
       [resetToken, user.id]
     );
 
-    const emailSent = await sendEmail(
+    // Fire email in background (non-blocking) - don't await
+    sendEmail(
       email,
       'Password Reset - Seafood ERP',
       EmailTemplates.passwordReset(resetToken, user.name)
-    );
-
-    if (!emailSent) {
-      throw new Error('Failed to send email. Please try again later.');
-    }
+    ).catch(err => logger.error('Password reset email failed', { error: err.message, email }));
 
     logger.info(`Password reset OTP sent to ${email}`);
     return { success: true, message: 'OTP sent to email!' };
@@ -187,7 +184,8 @@ class AuthService {
 
     logger.info(`Password reset successful for ${email}`);
 
-    await sendEmail(email, 'Password Changed - Seafood ERP', EmailTemplates.passwordResetSuccess(user.name));
+    sendEmail(email, 'Password Changed - Seafood ERP', EmailTemplates.passwordResetSuccess(user.name))
+      .catch(err => logger.error('Password change notification email failed', { error: err.message, email }));
 
     return { success: true, message: 'Password reset successful!' };
   }
