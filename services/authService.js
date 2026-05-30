@@ -12,11 +12,16 @@ let transporter = null;
 const getTransporter = () => {
   if (!transporter && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-      }
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
   }
   return transporter;
@@ -148,7 +153,7 @@ class AuthService {
       EmailTemplates.passwordReset(resetToken, user.name)
     ).catch(err => logger.error('Password reset email failed', { error: err.message, email }));
 
-    logger.info(`Password reset OTP sent to ${email}`);
+    logger.info(`Password reset OTP for ${email}: ${resetToken}`);
     return { success: true, message: 'OTP sent to email!' };
   }
 
