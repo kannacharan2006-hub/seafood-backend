@@ -123,7 +123,7 @@ router.post('/forgot-password', authLimiter, authValidation.forgotPassword, asyn
  *       400:
  *         description: Invalid or expired OTP
  */
-router.post('/reset-password', authLimiter, async (req, res) => {
+router.post('/reset-password', authLimiter, authValidation.resetPassword, async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     const result = await AuthService.resetPassword(email, otp, newPassword);

@@ -39,6 +39,13 @@ const authValidation = {
     body('email').isEmail().withMessage('Valid email is required'),
     validate
   ],
+
+  resetPassword: [
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('otp').notEmpty().withMessage('OTP is required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    validate
+  ],
   
   registerCompany: [
     body('company_name').notEmpty().trim().withMessage('Company name is required'),
