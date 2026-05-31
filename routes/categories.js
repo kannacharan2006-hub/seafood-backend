@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Database = require('../config/database');
 const verifyToken = require('../middleware/auth');
+const { requireWriteAccess } = require('../middleware/subscriptionAuth');
 const ApiResponse = require('../utils/response');
 
 router.get('/', verifyToken, async (req, res) => {
@@ -13,7 +14,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', verifyToken, requireWriteAccess(), async (req, res) => {
   try {
     const { name } = req.body;
     if (!name) {
@@ -33,7 +34,7 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
-router.put('/:id', verifyToken, async (req, res) => {
+router.put('/:id', verifyToken, requireWriteAccess(), async (req, res) => {
   try {
     const { name } = req.body;
     if (!name) {
@@ -46,7 +47,7 @@ router.put('/:id', verifyToken, async (req, res) => {
   }
 });
 
-router.delete('/:id', verifyToken, async (req, res) => {
+router.delete('/:id', verifyToken, requireWriteAccess(), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {

@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const Database = require('../config/database');
 const verifyToken = require('../middleware/auth');
+const { requireWriteAccess } = require('../middleware/subscriptionAuth');
 const { commonValidations } = require('../config/validation');
 const ApiResponse = require('../utils/response');
 
@@ -21,7 +22,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', verifyToken, requireWriteAccess(), async (req, res) => {
   if (req.user.role !== 'OWNER') {
     return ApiResponse.forbidden(res, 'Access denied');
   }
@@ -42,7 +43,7 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
-router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.delete('/:id', verifyToken, requireWriteAccess(), commonValidations.idValidation, async (req, res) => {
   if (req.user.role !== 'OWNER') {
     return ApiResponse.forbidden(res, 'Access denied');
   }
@@ -57,7 +58,7 @@ router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, r
   }
 });
 
-router.put('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.put('/:id', verifyToken, requireWriteAccess(), commonValidations.idValidation, async (req, res) => {
   if (req.user.role !== 'OWNER') {
     return ApiResponse.forbidden(res, 'Access denied');
   }

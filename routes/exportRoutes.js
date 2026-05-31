@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 const PDFDocument = require('pdfkit');
 const verifyToken = require('../middleware/auth');
+const { requireWriteAccess } = require('../middleware/subscriptionAuth');
 const { exportValidation, commonValidations } = require('../config/validation');
 const ExportService = require('../services/exportService');
 const { wsManager } = require('../config/websocket');
 const ApiResponse = require('../utils/response');
 
-router.post('/', verifyToken, exportValidation.create, async (req, res) => {
+router.post('/', verifyToken, requireWriteAccess(), exportValidation.create, async (req, res) => {
   if (!['OWNER', 'EMPLOYEE'].includes(req.user.role)) {
     return ApiResponse.forbidden(res, 'Access denied');
   }
@@ -30,7 +31,7 @@ router.post('/', verifyToken, exportValidation.create, async (req, res) => {
   }
 });
 
-router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.delete('/:id', verifyToken, requireWriteAccess(), commonValidations.idValidation, async (req, res) => {
   try {
     const result = await ExportService.deleteExport(
       req.params.id,

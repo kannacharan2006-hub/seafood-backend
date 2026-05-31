@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
+const { requireWriteAccess } = require('../middleware/subscriptionAuth');
 const { conversionValidation, commonValidations } = require('../config/validation');
 const ConversionService = require('../services/conversionService');
 const { wsManager } = require('../config/websocket');
 const ApiResponse = require('../utils/response');
 
-router.post('/convert', verifyToken, conversionValidation.create, async (req, res) => {
+router.post('/convert', verifyToken, requireWriteAccess(), conversionValidation.create, async (req, res) => {
   try {
     const { raw_items, final_items, date, notes } = req.body;
     const result = await ConversionService.createConversion(
@@ -22,7 +23,7 @@ router.post('/convert', verifyToken, conversionValidation.create, async (req, re
   }
 });
 
-router.delete('/convert/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.delete('/convert/:id', verifyToken, requireWriteAccess(), commonValidations.idValidation, async (req, res) => {
   try {
     const result = await ConversionService.deleteConversion(req.params.id, req.user.company_id);
     wsManager.notifyDashboardRefresh(req.user.company_id, { type: 'conversion_deleted' });

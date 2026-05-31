@@ -28,7 +28,7 @@ router.post('/', verifyToken, requireWriteAccess(), purchaseValidation.create, a
   }
 });
 
-router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.delete('/:id', verifyToken, requireWriteAccess(), commonValidations.idValidation, async (req, res) => {
   try {
     if (req.user.role !== 'OWNER') {
       return ApiResponse.forbidden(res, 'Only Owner can delete purchase');
@@ -41,7 +41,7 @@ router.delete('/:id', verifyToken, commonValidations.idValidation, async (req, r
   }
 });
 
-router.put('/:id/payment', verifyToken, commonValidations.idValidation, async (req, res) => {
+router.put('/:id/payment', verifyToken, requireWriteAccess(), commonValidations.idValidation, async (req, res) => {
   try {
     if (req.user.role !== 'OWNER') {
       return ApiResponse.forbidden(res, 'Only Owner can update payment');

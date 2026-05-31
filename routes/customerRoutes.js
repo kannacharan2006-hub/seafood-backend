@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
+const { requireWriteAccess } = require('../middleware/subscriptionAuth');
 const { customerValidation } = require('../config/validation');
 const CustomerService = require('../services/customerService');
 const ApiResponse = require('../utils/response');
 
-router.post('/', verifyToken, customerValidation.create, async (req, res) => {
+router.post('/', verifyToken, requireWriteAccess(), customerValidation.create, async (req, res) => {
   try {
     const { name, phone, address } = req.body;
     const result = await CustomerService.createCustomer(req.user.company_id, name, phone, address);
