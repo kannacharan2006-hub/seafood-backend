@@ -62,13 +62,13 @@ router.get('/invoice/:id', verifyToken, commonValidations.idValidation, async (r
     );
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${items[0].invoice_no}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="SalesInvoice-${items[0].invoice_no}.pdf"`);
     
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
     doc.pipe(res);
 
     const primaryColor = '#1e3a5f';
-    const accentColor = '#2563eb';
+    const accentColor = '#10b981';
     const lightBg = '#f8fafc';
     const borderColor = '#e2e8f0';
     const textDark = '#1e293b';
@@ -79,10 +79,13 @@ router.get('/invoice/:id', verifyToken, commonValidations.idValidation, async (r
        .text(company.name || 'SEAFOOD PRO', 40, 25);
     doc.fontSize(10).font('Helvetica')
        .text(`${company.email || ''} | ${company.phone || ''}`, 40, 55);
-    doc.fillColor(accentColor).fontSize(36).font('Helvetica-Bold')
-       .text('INVOICE', 400, 30, { align: 'right' });
+    doc.rect(400, 15, 155, 22).fill('#059669');
+    doc.fillColor('white').fontSize(9).font('Helvetica-Bold')
+       .text('SALES', 477, 19, { align: 'center' });
+    doc.fillColor(accentColor).fontSize(34).font('Helvetica-Bold')
+       .text('INVOICE', 400, 35, { align: 'right' });
     doc.fillColor('white').fontSize(12)
-       .text(`#${items[0].invoice_no}`, 400, 70, { align: 'right' });
+       .text(`#EXP-${items[0].invoice_no}`, 400, 70, { align: 'right' });
 
     let y = 120;
     doc.rect(40, y, 160, 60).fill(lightBg).stroke(borderColor);
@@ -103,37 +106,37 @@ router.get('/invoice/:id', verifyToken, commonValidations.idValidation, async (r
     }
 
     y += 80;
-    doc.rect(40, y, 515, 35).fill(primaryColor);
-    doc.fillColor('white').fontSize(10).font('Helvetica-Bold')
-       .text('ITEM', 50, y+12)
-       .text('QTY (KG)', 300, y+12, { align: 'center' })
-       .text('RATE/KG', 380, y+12, { align: 'center' })
-       .text('AMOUNT', 480, y+12, { align: 'right' });
+    doc.rect(40, y, 515, 28).fill(primaryColor);
+    doc.fillColor('white').fontSize(8).font('Helvetica-Bold')
+       .text('ITEM', 45, y+10)
+       .text('QTY (KG)', 265, y+10, { align: 'center' })
+       .text('RATE/KG', 360, y+10, { align: 'center' })
+       .text('AMOUNT', 485, y+10, { align: 'right' });
 
-    y += 35;
+    y += 28;
     items.forEach((item, index) => {
       const bgColor = index % 2 === 0 ? 'white' : lightBg;
-      doc.rect(40, y, 515, 45).fill(bgColor).stroke(borderColor);
+      doc.rect(40, y, 515, 35).fill(bgColor).stroke(borderColor);
       const displayName = item.variant_name ? `${item.item_name} - ${item.variant_name}` : item.item_name;
-      doc.fillColor(textDark).fontSize(11).font('Helvetica')
-         .text(displayName.substring(0, 35), 50, y+10)
-         .text(item.quantity.toFixed(2), 300, y+10, { align: 'center' })
-         .text(`₹${item.price_per_kg.toFixed(2)}`, 380, y+10, { align: 'center' })
-         .text(`₹${item.total.toFixed(2)}`, 485, y+10, { align: 'right' });
-      y += 45;
+      doc.fillColor(textDark).fontSize(9).font('Helvetica')
+         .text(displayName.substring(0, 35), 45, y+12)
+         .text(item.quantity.toFixed(2), 265, y+12, { align: 'center' })
+         .text(`Rs. ${item.price_per_kg.toFixed(2)}`, 360, y+12, { align: 'center' })
+         .text(`Rs. ${item.total.toFixed(2)}`, 485, y+12, { align: 'right' });
+      y += 35;
     });
 
-    y += 20;
-    doc.rect(300, y, 255, 80).fill(lightBg).stroke(borderColor);
-    doc.fillColor(textLight).fontSize(10).font('Helvetica')
+    y += 15;
+    doc.rect(300, y, 255, 65).fill(lightBg).stroke(borderColor);
+    doc.fillColor(textLight).fontSize(9).font('Helvetica')
        .text('Subtotal', 315, y+15)
-       .text(`₹${grandTotal.toFixed(2)}`, 480, y+15, { align: 'right' });
+       .text(`Rs. ${grandTotal.toFixed(2)}`, 480, y+15, { align: 'right' });
     
-    y += 40;
-    doc.rect(300, y, 255, 50).fill(primaryColor);
-    doc.fillColor('white').fontSize(14).font('Helvetica-Bold')
-       .text('GRAND TOTAL', 315, y+18);
-    doc.fontSize(18).text(`₹${grandTotal.toFixed(2)}`, 380, y+16, { align: 'right' });
+    y += 35;
+    doc.rect(300, y, 255, 40).fill(primaryColor);
+    doc.fillColor('white').fontSize(12).font('Helvetica-Bold')
+       .text('GRAND TOTAL', 315, y+13);
+    doc.fontSize(14).text(`Rs. ${grandTotal.toFixed(2)}`, 380, y+13, { align: 'right' });
 
     y += 80;
     doc.fillColor(textDark).fontSize(11).font('Helvetica-Bold').text('Payment Terms', 40, y);
