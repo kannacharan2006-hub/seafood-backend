@@ -268,7 +268,7 @@ class AuthService {
         logger.error('Seed data failed', { error: err.message, companyId })
       );
 
-      // Auto-create 30-day trial subscription
+      // Auto-create 90-day trial subscription
       this.createTrialSubscription(companyId).catch(err =>
         logger.error('Trial subscription creation failed', { error: err.message, companyId })
       );

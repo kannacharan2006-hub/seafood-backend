@@ -66,7 +66,7 @@ const requireWriteAccess = () => {
           _buildBlockedResponse(
             subscription,
             subscription.plan_id === 'trial'
-              ? 'Your 30-day trial has ended. Please subscribe to continue.'
+              ? 'Your 90-day trial has ended. Please subscribe to continue.'
               : 'Your subscription has expired. Please renew to continue.'
           )
         );

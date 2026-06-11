@@ -74,4 +74,27 @@ router.put('/:id', verifyToken, requireWriteAccess(), commonValidations.idValida
   }
 });
 
+router.put('/:id/password', verifyToken, requireWriteAccess(), async (req, res) => {
+  if (req.user.role !== 'OWNER') {
+    return ApiResponse.forbidden(res, 'Only OWNER can change passwords');
+  }
+  const { password } = req.body;
+  if (!password) {
+    return ApiResponse.badRequest(res, 'Password is required');
+  }
+  if (password.length < 8) {
+    return ApiResponse.badRequest(res, 'Password must be at least 8 characters');
+  }
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await Database.update('users', { password_hash: hashedPassword }, 'id = ? AND company_id = ?', [req.params.id, req.user.company_id]);
+    if (result.affectedRows === 0) {
+      return ApiResponse.notFound(res, 'User not found');
+    }
+    ApiResponse.success(res, null, 'Password updated successfully');
+  } catch (error) {
+    ApiResponse.error(res, error.message);
+  }
+});
+
 module.exports = router;

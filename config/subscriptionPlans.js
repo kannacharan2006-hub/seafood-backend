@@ -4,12 +4,12 @@ module.exports = {
     name: 'Free Trial',
     price: 0,
     period: 'trial',
-    periodDays: 30,
+    periodDays: 90,
     currency: 'INR',
     maxUsers: 20,
     tier: 1,
     features: ['advanced_reports', 'priority_support', '20_users_max', 'stock_alerts'],
-    description: '30 days free — full access'
+    description: '90 days free — full access'
   },
   free: {
     id: null,
