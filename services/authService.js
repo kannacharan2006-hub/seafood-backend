@@ -107,14 +107,12 @@ class AuthService {
     }
 
     try {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-      
-      const isValid = await TokenService.verifyRefreshToken(decoded.id, refreshToken);
-      if (!isValid) {
+      const stored = await TokenService.verifyRefreshTokenRecord(refreshToken);
+      if (!stored) {
         throw new Error('Invalid or expired refresh token');
       }
 
-      const user = await Database.getOne('SELECT * FROM users WHERE id = ?', [decoded.id]);
+      const user = await Database.getOne('SELECT * FROM users WHERE id = ?', [stored.user_id]);
       if (!user) {
         throw new Error('User not found');
       }
@@ -123,13 +121,13 @@ class AuthService {
 
       return {
         token: newAccessToken,
-        expiresIn: 3600 // 1 hour in seconds
+        expiresIn: 3600
       };
     } catch (error) {
-      if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
-        throw new Error('Invalid or expired refresh token');
+      if (error.message === 'Invalid or expired refresh token' || error.message === 'User not found') {
+        throw error;
       }
-      throw error;
+      throw new Error('Invalid or expired refresh token');
     }
   }
 

@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
 const ACCESS_TOKEN_EXPIRY = '1h';
-const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+const REFRESH_TOKEN_EXPIRY_DAYS = 365;
 
 class TokenService {
   static generateAccessToken(user) {
@@ -44,6 +44,17 @@ class TokenService {
     );
 
     return stored !== null;
+  }
+
+  static async verifyRefreshTokenRecord(refreshToken) {
+    const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    
+    const stored = await Database.getOne(
+      'SELECT * FROM refresh_tokens WHERE token_hash = ? AND expires_at > NOW()',
+      [hashedToken]
+    );
+
+    return stored;
   }
 
   static async revokeRefreshToken(userId) {
