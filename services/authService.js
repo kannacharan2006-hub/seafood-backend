@@ -90,7 +90,7 @@ class AuthService {
       message: 'Login successful',
       token: accessToken,
       refreshToken: refreshToken,
-      expiresIn: 900,
+      expiresIn: 2592000,
       user: {
         id: user.id,
         name: user.name,
@@ -121,7 +121,7 @@ class AuthService {
 
       return {
         token: newAccessToken,
-        expiresIn: 3600
+        expiresIn: 2592000
       };
     } catch (error) {
       if (error.message === 'Invalid or expired refresh token' || error.message === 'User not found') {
@@ -285,7 +285,7 @@ class AuthService {
         message: "Company created successfully",
         token,
         refreshToken: refreshToken,
-        expiresIn: 3600,
+        expiresIn: 2592000,
         user: {
           id: userId,
           name: owner_name,

@@ -2,7 +2,7 @@ const Database = require('../config/database');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const ACCESS_TOKEN_EXPIRY = '1h';
+const ACCESS_TOKEN_EXPIRY = '30d';
 const REFRESH_TOKEN_EXPIRY_DAYS = 365;
 
 class TokenService {
