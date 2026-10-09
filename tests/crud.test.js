@@ -1,7 +1,9 @@
 const request = require('supertest');
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const purchaseRoutes = require('../routes/purchaseRoutes');
 const exportRoutes = require('../routes/exportRoutes');
+const PurchaseService = require('../services/purchaseService');
 
 const app = express();
 app.use(express.json());
@@ -16,6 +18,45 @@ app.use('/api/purchases', authMock, purchaseRoutes);
 app.use('/api/exports', authMock, exportRoutes);
 
 describe('Purchase Routes', () => {
+  it('should generate a multi-page purchase invoice PDF', async () => {
+    const items = Array.from({ length: 18 }, (_, index) => ({
+      item_name: `Seafood item ${index + 1}`,
+      variant_name: 'Fresh',
+      quantity: 2.5,
+      price_per_kg: 120,
+      total: 300
+    }));
+    const invoiceData = {
+      items,
+      company: { name: 'Seafood Company', email: 'accounts@example.com', phone: '9876543210' },
+      vendor: { name: 'Supplier One', address: 'Harbor Road', phone: '9876500000' },
+      grandTotal: 5400,
+      purchaseDate: '2024-01-15'
+    };
+    const getInvoiceData = jest.spyOn(PurchaseService, 'getInvoiceData').mockResolvedValue(invoiceData);
+    const token = jwt.sign(mockUser, process.env.JWT_SECRET);
+
+    try {
+      const res = await request(app)
+        .get('/api/purchases/invoice/1')
+        .set('Authorization', `Bearer ${token}`)
+        .buffer()
+        .parse((response, callback) => {
+          const chunks = [];
+          response.on('data', chunk => chunks.push(chunk));
+          response.on('end', () => callback(null, Buffer.concat(chunks)));
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('application/pdf');
+      expect(res.headers['content-disposition']).toContain('PurchaseInvoice-PR-000001.pdf');
+      expect(res.body.subarray(0, 5).toString()).toBe('%PDF-');
+      expect(getInvoiceData).toHaveBeenCalledWith('1', mockUser.company_id);
+    } finally {
+      getInvoiceData.mockRestore();
+    }
+  });
+
   describe('POST /api/purchases', () => {
     it('should return 400 for missing vendor_id', async () => {
       const res = await request(app)
