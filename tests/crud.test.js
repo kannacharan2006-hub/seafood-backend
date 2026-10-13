@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const purchaseRoutes = require('../routes/purchaseRoutes');
 const exportRoutes = require('../routes/exportRoutes');
 const PurchaseService = require('../services/purchaseService');
+const ExportService = require('../services/exportService');
 
 const app = express();
 app.use(express.json());
@@ -116,6 +117,47 @@ describe('Purchase Routes', () => {
 });
 
 describe('Export Routes', () => {
+  it('should generate an export invoice PDF', async () => {
+    const invoiceData = {
+      items: [{
+        invoice_no: 'INV000001',
+        date: '2024-01-15',
+        customer_name: 'Customer One',
+        customer_address: 'Harbor Road',
+        customer_phone: '9876500000',
+        item_name: 'Seafood item',
+        variant_name: 'Fresh',
+        quantity: 2.5,
+        price_per_kg: 120,
+        total: 300
+      }],
+      company: { name: 'Seafood Company', email: 'accounts@example.com', phone: '9876543210' },
+      grandTotal: 300
+    };
+    const getInvoiceData = jest.spyOn(ExportService, 'getInvoiceData').mockResolvedValue(invoiceData);
+    const token = jwt.sign(mockUser, process.env.JWT_SECRET);
+
+    try {
+      const res = await request(app)
+        .get('/api/exports/invoice/1')
+        .set('Authorization', `Bearer ${token}`)
+        .buffer()
+        .parse((response, callback) => {
+          const chunks = [];
+          response.on('data', chunk => chunks.push(chunk));
+          response.on('end', () => callback(null, Buffer.concat(chunks)));
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('application/pdf');
+      expect(res.headers['content-disposition']).toContain('SalesInvoice-INV000001.pdf');
+      expect(res.body.subarray(0, 5).toString()).toBe('%PDF-');
+      expect(getInvoiceData).toHaveBeenCalledWith('1', mockUser.company_id);
+    } finally {
+      getInvoiceData.mockRestore();
+    }
+  });
+
   describe('POST /api/exports', () => {
     it('should return 400 or 403 for missing customer_id', async () => {
       const res = await request(app)
